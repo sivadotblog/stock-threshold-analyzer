@@ -1,0 +1,63 @@
+site_name: Stock Moment Analysis
+site_description: Visualizing +/-N% moving-anchor threshold events for stocks.
+site_author: sivadotblog
+site_url: https://sivadotblog.github.io/stock-threshold-analyzer/
+
+repo_url: https://github.com/sivadotblog/stock-threshold-analyzer
+repo_name: sivadotblog/stock-threshold-analyzer
+
+docs_dir: sma
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+plugins:
+  - search:
+      lang: en
+  - awesome-pages
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - toc:
+      permalink: true
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+
+extra_css:
+  - assets/stylesheets/sma.css
+
+extra_javascript:
+  - https://cdn.plot.ly/plotly-2.35.2.min.js
+  - assets/javascripts/sma-chart.js
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/sivadotblog/stock-threshold-analyzer

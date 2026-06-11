@@ -1,0 +1,44 @@
+name: Refresh SMA Data
+
+on:
+  schedule:
+    # Every weekday at 22:00 UTC (~6pm ET, after US market close)
+    - cron: "0 22 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-sma-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Regenerate SMA data
+        run: python generate_data.py
+
+      - name: Commit updated data
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain sma/data)" ]; then
+            git add sma/data
+            git commit -m "chore(sma): refresh data $(date -u +%Y-%m-%d)"
+            git push
+          else
+            echo "No data changes."
+          fi

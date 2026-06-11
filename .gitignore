@@ -7,3 +7,5 @@ venv/
 output/
 .idea/
 .vscode/
+site/
+

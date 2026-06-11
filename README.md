@@ -76,6 +76,27 @@ Running `python analyze.py --ticker TQQQ` against the Jun 2021 – Jun 2026 wind
 - The `start` row in the events file is the initial anchor, not a triggered event.
 - Streak duration is calendar days from the anchor immediately before the streak began to the final down-trigger close.
 
+## SMA — interactive site
+
+This repo also hosts an interactive GitHub Pages site under `sma/`:
+
+- **Live site:** https://sivadotblog.github.io/stock-threshold-analyzer/
+- Pick a ticker, drag the threshold slider, watch events recompute in the browser
+- Daily auto-refresh of underlying price JSON via the `Refresh SMA Data` workflow
+- Built with MkDocs Material + Plotly.js
+
+### Adding tickers
+
+Edit the `TICKERS` list in `generate_data.py` and either push to `main` (the daily Action picks it up the next run) or trigger `Refresh SMA Data` manually from the Actions tab.
+
+### Local preview
+
+```bash
+pip install -r requirements.txt -r requirements-docs.txt
+python generate_data.py            # writes sma/data/*.json
+mkdocs serve                        # http://127.0.0.1:8000
+```
+
 ## License
 
 MIT.
