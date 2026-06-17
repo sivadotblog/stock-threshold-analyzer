@@ -1,19 +1,19 @@
 {
-  "generated_at": "2026-06-16T22:40:16+00:00",
+  "generated_at": "2026-06-17T22:36:36+00:00",
   "lookback_years": 5,
   "tickers": [
     {
       "ticker": "TQQQ",
       "name": "ProShares UltraPro QQQ",
-      "start": "2021-06-17",
-      "end": "2026-06-15",
+      "start": "2021-06-18",
+      "end": "2026-06-16",
       "rows": 1254
     },
     {
       "ticker": "ZETA",
       "name": "Zeta Global Holdings Corp.",
-      "start": "2021-06-17",
-      "end": "2026-06-15",
+      "start": "2021-06-18",
+      "end": "2026-06-16",
       "rows": 1254
     }
   ]
