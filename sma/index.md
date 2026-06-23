@@ -19,7 +19,7 @@ Example with N = 10% and start = $50:
 
 ## What you can do
 
-- Pick a ticker from the dropdown (currently TQQQ and ZETA)
+- Pick a ticker from the dropdown (TQQQ, ZETA, plus the ZETA peer set: KVYO, MGNI, BRZE, DV, AMPL)
 - Drag the **threshold** slider from 1% to 25% to see how trigger frequency changes
 - Adjust the **minimum streak** length to find consecutive down-trigger clusters (drawdown periods)
 - Zoom, pan, and hover the chart for per-point details

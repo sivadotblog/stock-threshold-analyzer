@@ -8,4 +8,5 @@ output/
 .idea/
 .vscode/
 site/
+.cache/
 

@@ -1,0 +1,76 @@
+"""
+On-disk price cache for the bullish-oscillator screen.
+
+Screening several hundred tickers hits Yahoo hard, so cache each ticker's
+split/dividend-adjusted daily closes to disk and only re-fetch when stale. Wraps
+the existing fetch primitive ``load_prices`` (research_agent.py) — no duplicate
+download logic.
+
+Cache layout: ``.cache/prices/{TICKER}_{years}y.csv`` (two columns: date, close).
+The directory is git-ignored.
+"""
+
+from __future__ import annotations
+
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Optional
+
+import pandas as pd
+
+from research_agent import load_prices
+
+CACHE_DIR = Path(__file__).parent / ".cache" / "prices"
+_FETCH_THROTTLE_SEC = 0.4   # be polite to Yahoo on big batches
+
+
+def _cache_path(ticker: str, years: int) -> Path:
+    return CACHE_DIR / f"{ticker.upper()}_{years}y.csv"
+
+
+def _age_days(path: Path) -> float:
+    mtime = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+    return (datetime.now(timezone.utc) - mtime).total_seconds() / 86400.0
+
+
+def load_cached_prices(ticker: str, years: int = 5,
+                       max_age_days: float = 1.0) -> Optional[pd.DataFrame]:
+    """Return a ['date','close'] frame for ``ticker``, from cache when fresh.
+
+    Reads the cache file if it exists and is younger than ``max_age_days``;
+    otherwise fetches live via ``load_prices``, writes the cache, and returns it.
+    Returns ``None`` (never raises) if the live fetch fails or yields no data, so
+    one bad ticker can't abort a batch screen.
+    """
+    path = _cache_path(ticker, years)
+
+    if path.exists() and _age_days(path) <= max_age_days:
+        try:
+            df = pd.read_csv(path, parse_dates=["date"])
+            if not df.empty:
+                return df
+        except Exception:  # noqa: BLE001 -- corrupt cache -> fall through to refetch
+            pass
+
+    try:
+        time.sleep(_FETCH_THROTTLE_SEC)
+        df = load_prices(ticker, years=years)
+    except Exception:  # noqa: BLE001
+        return None
+    if df is None or df.empty:
+        return None
+
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        df.to_csv(path, index=False)
+    except Exception:  # noqa: BLE001 -- caching is best-effort
+        pass
+    return df
+
+
+if __name__ == "__main__":
+    import sys
+    sym = sys.argv[1] if len(sys.argv) > 1 else "ZETA"
+    out = load_cached_prices(sym)
+    print(f"{sym}: {0 if out is None else len(out)} rows -> {_cache_path(sym, 5)}")

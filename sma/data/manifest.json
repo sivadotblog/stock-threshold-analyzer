@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-22T22:36:14+00:00",
+  "generated_at": "2026-06-22T18:45:41+00:00",
   "lookback_years": 5,
   "tickers": [
     {
@@ -12,6 +12,62 @@
     {
       "ticker": "ZETA",
       "name": "Zeta Global Holdings Corp.",
+      "start": "2021-06-23",
+      "end": "2026-06-18",
+      "rows": 1253
+    },
+    {
+      "ticker": "KVYO",
+      "name": "Klaviyo, Inc.",
+      "start": "2023-09-20",
+      "end": "2026-06-18",
+      "rows": 689
+    },
+    {
+      "ticker": "MGNI",
+      "name": "Magnite, Inc.",
+      "start": "2021-06-23",
+      "end": "2026-06-18",
+      "rows": 1253
+    },
+    {
+      "ticker": "BRZE",
+      "name": "Braze, Inc.",
+      "start": "2021-11-17",
+      "end": "2026-06-18",
+      "rows": 1150
+    },
+    {
+      "ticker": "DV",
+      "name": "DoubleVerify Holdings, Inc.",
+      "start": "2021-06-23",
+      "end": "2026-06-18",
+      "rows": 1253
+    },
+    {
+      "ticker": "AMPL",
+      "name": "Amplitude, Inc.",
+      "start": "2021-09-28",
+      "end": "2026-06-18",
+      "rows": 1186
+    },
+    {
+      "ticker": "BMY",
+      "name": "Bristol-Myers Squibb Company",
+      "start": "2021-06-23",
+      "end": "2026-06-18",
+      "rows": 1253
+    },
+    {
+      "ticker": "XYL",
+      "name": "Xylem Inc.",
+      "start": "2021-06-23",
+      "end": "2026-06-18",
+      "rows": 1253
+    },
+    {
+      "ticker": "SON",
+      "name": "Sonoco Products Company",
       "start": "2021-06-23",
       "end": "2026-06-18",
       "rows": 1253

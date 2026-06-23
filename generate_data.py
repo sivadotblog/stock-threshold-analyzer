@@ -36,6 +36,16 @@ import yfinance as yf
 TICKERS: list[str] = [
     "TQQQ",
     "ZETA",
+    # ZETA peer set — ad-tech / marketing & customer-engagement SaaS comparables.
+    "KVYO",  # Klaviyo — marketing/email SaaS (closest business analog to ZETA)
+    "MGNI",  # Magnite — ad-tech sell-side platform
+    "BRZE",  # Braze — customer-engagement / marketing SaaS
+    "DV",    # DoubleVerify — ad verification / measurement
+    "AMPL",  # Amplitude — product/digital analytics SaaS
+    # BMY/XYL/SON
+    "BMY",   # Big pharma / stable blue-chip
+    "XYL",   # Xylem — industrial / water tech
+    "SON",   # Sonos — consumer tech / IoT
 ]
 
 LOOKBACK_YEARS = 5
