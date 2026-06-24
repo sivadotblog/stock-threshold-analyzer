@@ -16,7 +16,39 @@ import math
 import numpy as np
 import pandas as pd
 
-from analyze import find_threshold_events
+def find_threshold_events(df: pd.DataFrame, threshold_pct: float) -> pd.DataFrame:
+    """Walk the price series and emit an event every time price moves
+    +/- threshold_pct from the current anchor, then reset the anchor.
+    """
+    anchor_price = float(df.loc[0, "close"])
+    anchor_date = df.loc[0, "date"]
+
+    events: list[dict] = [{
+        "date": anchor_date,
+        "price": anchor_price,
+        "direction": "start",
+        "pct_from_anchor": 0.0,
+    }]
+
+    for i in range(1, len(df)):
+        price = float(df.loc[i, "close"])
+        date = df.loc[i, "date"]
+        pct = (price - anchor_price) / anchor_price * 100
+
+        if pct >= threshold_pct:
+            events.append({
+                "date": date, "price": price,
+                "direction": "up", "pct_from_anchor": pct,
+            })
+            anchor_price = price
+        elif pct <= -threshold_pct:
+            events.append({
+                "date": date, "price": price,
+                "direction": "down", "pct_from_anchor": pct,
+            })
+            anchor_price = price
+
+    return pd.DataFrame(events)
 
 # ---------------------------------------------------------------------------
 # Tunable constants (see reliability_metric.md). Calibrate here, nowhere else.
@@ -237,6 +269,7 @@ def compute_bullish_oscillation(prices: pd.DataFrame,
         "n_up": 0,
         "n_down": 0,
         "n_events": 0,
+        "current_streak": 0,
         "window_coverage": 0.0,
         "mean_amplitude": 0.0,
         "net_return_pct": 0.0,
@@ -258,6 +291,17 @@ def compute_bullish_oscillation(prices: pd.DataFrame,
     n_down = int((ev["direction"] == "down").sum())
     n_events = n_up + n_down
     out.update(n_up=n_up, n_down=n_down, n_events=n_events)
+
+    if n_events >= 1:
+        dirs = ev["direction"].tolist()
+        last_dir = dirs[-1]
+        streak = 0
+        for d in reversed(dirs):
+            if d == last_dir:
+                streak += 1
+            else:
+                break
+        out["current_streak"] = streak if last_dir == "up" else -streak
 
     close = prices["close"].to_numpy(dtype=float)
     net_return = float((close[-1] - close[0]) / close[0])

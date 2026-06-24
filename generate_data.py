@@ -2,18 +2,19 @@
 """
 Generate per-ticker JSON files consumed by the SMA static site.
 
-For each ticker in TICKERS:
-  - Fetches ~5y of split/dividend-adjusted daily closes from Yahoo Finance.
+Reads the top N tickers from sma/data/bullish_screen.json (produced by
+screen_bullish.py) and fetches their price history from Yahoo Finance.
+
+Run order: screen_bullish.py → generate_data.py
+
+For each ticker:
   - Writes sma/data/{TICKER}.json:
         { "ticker": "TQQQ",
           "name": "ProShares UltraPro QQQ",
           "fetched_at": "2026-06-11T...",
           "start": "2021-06-11",
           "end":   "2026-06-10",
-          "prices": [
-              {"d": "2021-06-11", "c": 27.31},
-              ...
-          ]
+          "prices": [{"d": "2021-06-11", "c": 27.31}, ...]
         }
 
 The threshold (+/-N%) is intentionally NOT precomputed — the browser recomputes
@@ -26,30 +27,27 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import yaml
 import yfinance as yf
 
-# ---------------------------------------------------------------------------
-# Hardcoded tickers driving the dropdown on the site.
-# Edit this list to add/remove tickers, then re-run the script (or let the
-# scheduled GitHub Action do it).
-# ---------------------------------------------------------------------------
-TICKERS: list[str] = [
-    "TQQQ",
-    "ZETA",
-    # ZETA peer set — ad-tech / marketing & customer-engagement SaaS comparables.
-    "KVYO",  # Klaviyo — marketing/email SaaS (closest business analog to ZETA)
-    "MGNI",  # Magnite — ad-tech sell-side platform
-    "BRZE",  # Braze — customer-engagement / marketing SaaS
-    "DV",    # DoubleVerify — ad verification / measurement
-    "AMPL",  # Amplitude — product/digital analytics SaaS
-    # BMY/XYL/SON
-    "BMY",   # Big pharma / stable blue-chip
-    "XYL",   # Xylem — industrial / water tech
-    "SON",   # Sonos — consumer tech / IoT
-]
+_ROOT = Path(__file__).parent
+_CONFIG = yaml.safe_load((_ROOT / "config.yaml").read_text())
+_SITE = _CONFIG["site"]
+LOOKBACK_YEARS: int = _SITE["lookback_years"]
+TOP_N: int = _SITE["top_n"]
+OUTPUT_DIR = _ROOT / "sma" / "data"
+SCREEN_PATH = OUTPUT_DIR / "bullish_screen.json"
 
-LOOKBACK_YEARS = 5
-OUTPUT_DIR = Path(__file__).parent / "sma" / "data"
+
+def _tickers_from_screen() -> list[str]:
+    if not SCREEN_PATH.exists():
+        raise SystemExit(
+            f"'{SCREEN_PATH}' not found — run screen_bullish.py first."
+        )
+    data = json.loads(SCREEN_PATH.read_text())
+    tickers = [r["ticker"] for r in data["results"][:TOP_N]]
+    print(f"Top {TOP_N} tickers from bullish screen: {', '.join(tickers)}")
+    return tickers
 
 
 def fetch_one(ticker: str, start: str, end: str) -> dict:
@@ -85,6 +83,7 @@ def fetch_one(ticker: str, start: str, end: str) -> dict:
 
 def main() -> int:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    tickers = _tickers_from_screen()
 
     end_dt = datetime.utcnow()
     start_dt = end_dt - timedelta(days=LOOKBACK_YEARS * 365)
@@ -97,8 +96,8 @@ def main() -> int:
         "tickers": [],
     }
 
-    print(f"Refreshing {len(TICKERS)} ticker(s) into {OUTPUT_DIR}")
-    for ticker in TICKERS:
+    print(f"Refreshing {len(tickers)} ticker(s) into {OUTPUT_DIR}")
+    for ticker in tickers:
         payload = fetch_one(ticker, start, end)
         out = OUTPUT_DIR / f"{ticker}.json"
         out.write_text(json.dumps(payload, separators=(",", ":")))

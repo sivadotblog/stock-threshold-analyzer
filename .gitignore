@@ -9,4 +9,5 @@ output/
 .vscode/
 site/
 .cache/
+sma/data/*.json
 

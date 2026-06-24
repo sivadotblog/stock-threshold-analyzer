@@ -2,9 +2,7 @@
 On-disk price cache for the bullish-oscillator screen.
 
 Screening several hundred tickers hits Yahoo hard, so cache each ticker's
-split/dividend-adjusted daily closes to disk and only re-fetch when stale. Wraps
-the existing fetch primitive ``load_prices`` (research_agent.py) — no duplicate
-download logic.
+split/dividend-adjusted daily closes to disk and only re-fetch when stale.
 
 Cache layout: ``.cache/prices/{TICKER}_{years}y.csv`` (two columns: date, close).
 The directory is git-ignored.
@@ -13,13 +11,29 @@ The directory is git-ignored.
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
 import pandas as pd
+import yfinance as yf
 
-from research_agent import load_prices
+
+def _load_prices(ticker: str, years: int) -> Optional[pd.DataFrame]:
+    end = datetime.utcnow()
+    start = end - timedelta(days=years * 365)
+    hist = yf.Ticker(ticker).history(
+        start=start.strftime("%Y-%m-%d"),
+        end=end.strftime("%Y-%m-%d"),
+        auto_adjust=True,
+    )
+    if hist.empty:
+        return None
+    df = hist[["Close"]].copy()
+    df.index = pd.to_datetime(df.index).tz_localize(None)
+    df = df.reset_index().rename(columns={"Date": "date", "Close": "close"})
+    df["date"] = pd.to_datetime(df["date"]).dt.normalize()
+    return df
 
 CACHE_DIR = Path(__file__).parent / ".cache" / "prices"
 _FETCH_THROTTLE_SEC = 0.4   # be polite to Yahoo on big batches
@@ -55,7 +69,7 @@ def load_cached_prices(ticker: str, years: int = 5,
 
     try:
         time.sleep(_FETCH_THROTTLE_SEC)
-        df = load_prices(ticker, years=years)
+        df = _load_prices(ticker, years=years)
     except Exception:  # noqa: BLE001
         return None
     if df is None or df.empty:

@@ -104,36 +104,41 @@
     Plotly.newPlot(el, traces, layout, { responsive: true, displaylogo: false });
   }
 
-  function renderTable(el, results, topN) {
-    const rows = results.slice(0, topN);
-    const th = (t) => `<th style="text-align:right;padding:4px 8px;">${t}</th>`;
-    const td = (t, extra) =>
-      `<td style="text-align:right;padding:4px 8px;${extra || ""}">${t}</td>`;
+  function streakLabel(n) {
+    if (!n) return "—";
+    return (n > 0 ? "+" : "") + n + (n > 0 ? "↑" : "↓");
+  }
+
+  function renderTable(el, results) {
+    const S = "text-align:right;padding:3px 6px;white-space:nowrap;";
+    const L = "text-align:left;padding:3px 6px;white-space:nowrap;";
+    const th = (t, left) =>
+      `<th style="${left ? L : S}font-weight:600;">${t}</th>`;
 
     let html =
-      '<table style="border-collapse:collapse;font-size:0.85em;width:100%;">' +
+      '<div style="overflow-x:auto;">' +
+      '<table style="border-collapse:collapse;font-size:0.82em;width:100%;">' +
       "<thead><tr>" +
-      '<th style="text-align:right;padding:4px 8px;">#</th>' +
-      '<th style="text-align:left;padding:4px 8px;">Ticker</th>' +
-      th("Score") + th("Activity") + th("Trend") + th("CAGR %/yr") +
-      th("Max DD %") + th("Swings ↑/↓") +
+      th("#") + th("Ticker", true) +
+      th("Score") + th("Streak") + th("CAGR%") + th("MaxDD%") + th("↑/↓") +
       "</tr></thead><tbody>";
 
-    for (const r of rows) {
+    for (const r of results) {
       const hot = r.ticker === HIGHLIGHT ? "background:rgba(220,38,38,0.10);" : "";
+      const streak = r.current_streak || 0;
+      const streakColor = streak > 0 ? "color:#16a34a;" : streak < 0 ? "color:#dc2626;" : "";
       html +=
         `<tr style="border-top:1px solid var(--md-default-fg-color--lightest);${hot}">` +
-        td(r.rank) +
-        `<td style="text-align:left;padding:4px 8px;font-weight:600;${hot}">${r.ticker}</td>` +
-        td(`<b>${fmt(r.bullish_score, 3)}</b>`) +
-        td(fmt(r.activity, 2)) +
-        td(fmt(r.trend, 2)) +
-        td(fmt(r.cagr_pct, 1)) +
-        td(fmt(r.max_drawdown_pct, 1)) +
-        td(`${r.n_up}/${r.n_down}`) +
+        `<td style="${S}">${r.rank}</td>` +
+        `<td style="${L}font-weight:600;"><a href="https://finance.yahoo.com/quote/${r.ticker}" target="_blank" rel="noopener">${r.ticker}</a></td>` +
+        `<td style="${S}"><b>${fmt(r.bullish_score, 3)}</b></td>` +
+        `<td style="${S}${streakColor}font-weight:600;">${streakLabel(streak)}</td>` +
+        `<td style="${S}">${fmt(r.cagr_pct, 1)}</td>` +
+        `<td style="${S}">${fmt(r.max_drawdown_pct, 1)}</td>` +
+        `<td style="${S}">${r.n_up}/${r.n_down}</td>` +
         "</tr>";
     }
-    html += "</tbody></table>";
+    html += "</tbody></table></div>";
     el.innerHTML = html;
   }
 
@@ -158,7 +163,7 @@
             `<small>Generated ${when}.</small>`;
         }
         renderScatter(scatterEl, results);
-        renderTable(tableEl, results, 30);
+        renderTable(tableEl, results);
       })
       .catch((err) => {
         if (metaEl) {

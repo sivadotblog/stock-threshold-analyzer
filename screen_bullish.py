@@ -2,9 +2,9 @@
 """
 Screen a universe for stocks that oscillate *like ZETA*.
 
-For every ticker in ``universe.UNIVERSE``, fetch cached prices and score them with
-``compute_bullish_oscillation`` (rewards an UP-trend with frequent two-sided +/-N%
-swings). Ranks by ``bullish_score`` descending and:
+For every ticker in config.yaml → universe (sp500 + supplement), fetch cached
+prices and score them with ``compute_bullish_oscillation`` (rewards an UP-trend
+with frequent two-sided +/-N% swings). Ranks by ``bullish_score`` descending and:
 
   * prints a leaderboard table, and
   * writes a structured ``sma/data/bullish_screen.json`` (per-stock metric array)
@@ -12,7 +12,7 @@ swings). Ranks by ``bullish_score`` descending and:
 
 Usage
 -----
-  python screen_bullish.py                       # 5y, +/-10%, top 25
+  python screen_bullish.py                       # defaults from config.yaml
   python screen_bullish.py --years 10 --top 40
   python screen_bullish.py --threshold 15 --tickers ZETA,KVYO,MGNI
 """
@@ -24,9 +24,15 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+import yaml
+
 from price_cache import load_cached_prices
 from reliability import compute_bullish_oscillation
-from universe import UNIVERSE
+
+_CONFIG = yaml.safe_load((Path(__file__).parent / "config.yaml").read_text())
+_SCREEN = _CONFIG["screen"]
+_UNI = _CONFIG["universe"]
+UNIVERSE: list[str] = sorted({t for tickers in _UNI.values() for t in tickers})
 
 OUTPUT_PATH = Path(__file__).parent / "sma" / "data" / "bullish_screen.json"
 
@@ -36,11 +42,12 @@ def parse_args() -> argparse.Namespace:
         description="Find stocks that oscillate like ZETA (bullish oscillators).",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    p.add_argument("--years", type=int, default=5, choices=[5, 10],
+    p.add_argument("--years", type=int, default=_SCREEN["lookback_years"],
+                   choices=[5, 10],
                    help="Lookback window in years.")
-    p.add_argument("--threshold", "-p", type=float, default=10.0,
+    p.add_argument("--threshold", "-p", type=float, default=_SCREEN["threshold_pct"],
                    help="Swing threshold percentage that defines one oscillation leg.")
-    p.add_argument("--top", type=int, default=25,
+    p.add_argument("--top", type=int, default=_SCREEN["top"],
                    help="How many top names to print.")
     p.add_argument("--max-age-days", type=float, default=1.0,
                    help="Re-fetch a ticker if its cache is older than this.")
@@ -109,6 +116,7 @@ def main() -> int:
                 "net_return_pct": r["net_return_pct"],
                 "n_up": r["n_up"],
                 "n_down": r["n_down"],
+                "current_streak": r["current_streak"],
                 "mean_amplitude": r["mean_amplitude"],
             }
             for rank, r in enumerate(rows, 1)
