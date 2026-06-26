@@ -639,3 +639,81 @@ universe:
     - WBA
     - HIMS
     - OSCR
+
+  # Leveraged ETFs — broad market (3x bull)
+  leveraged_3x_broad:
+    - TQQQ   # UltraPro QQQ — Nasdaq-100
+    - UPRO   # UltraPro S&P500
+    - SPXL   # Daily S&P 500 Bull 3X
+    - UDOW   # UltraPro Dow30
+    - TNA    # Daily Small Cap Bull 3X — Russell 2000
+    - URTY   # UltraPro Russell2000
+    - UMDD   # UltraPro MidCap 400
+    - MIDU   # Daily Mid Cap Bull 3X
+
+  # Leveraged ETFs — broad market (2x bull)
+  leveraged_2x_broad:
+    - SSO    # Ultra S&P500
+    - SPUU   # Daily S&P 500 Bull 2X
+    - QLD    # Ultra QQQ — Nasdaq-100
+    - QQUP   # Daily Magnificent 7 Bull 2X
+    - QQXL   # Ultra QQQ Top 30
+    - DDM    # Ultra Dow30
+    - MVV    # Ultra MidCap400
+    - UWM    # Ultra Russell2000
+    - SAA    # Ultra SmallCap600
+    - URSP   # Ultra S&P 500 Equal Weight
+
+  # Leveraged ETFs — sector (bull)
+  leveraged_sector:
+    - TECL   # Daily Technology Bull 3X
+    - ROM    # Ultra Technology 2X
+    - SOXL   # Daily Semiconductor Bull 3X
+    - USD    # Ultra Semiconductors 2X
+    - CURE   # Daily Healthcare Bull 3X
+    - RXL    # Ultra Health Care 2X
+    - BIB    # Ultra Nasdaq Biotechnology 2X
+    - LABU   # Daily S&P Biotech Bull 3X
+    - FAS    # Daily Financial Bull 3X
+    - UYG    # Ultra Financials 2X
+    - DPST   # Daily Regional Banks Bull 3X
+    - DIG    # Ultra Energy 2X
+    - GUSH   # Daily S&P Oil & Gas E&P Bull 2X
+    - DFEN   # Daily Aerospace & Defense Bull 3X
+    - RETL   # Daily Retail Bull 3X
+    - NAIL   # Daily Homebuilders & Supplies Bull 3X
+    - WEBL   # Daily Dow Jones Internet Bull 3X
+    - DRN    # Daily Real Estate Bull 3X
+    - URE    # Ultra Real Estate 2X
+    - UCC    # Ultra Consumer Discretionary 2X
+    - UGE    # Ultra Consumer Staples 2X
+    - UXI    # Ultra Industrials 2X
+    - UYM    # Ultra Materials 2X
+    - UPW    # Ultra Utilities 2X
+    - LTL    # Ultra Communication Services 2X
+    - PILL   # Daily Pharmaceutical & Medical Bull 3X
+    - TPOR   # Daily Transportation Bull 3X
+    - HIBL   # Daily S&P 500 High Beta Bull 3X
+    - UCYB   # Ultra Nasdaq Cybersecurity 2X
+    - SKYU   # Ultra Nasdaq Cloud Computing 2X
+    - AIBU   # Daily AI and Big Data Bull 2X
+    - UBOT   # Daily Robotics, AI & Automation Bull 2X
+    - FNGG   # Daily NYSE FANG+ Bull 2X
+
+  # Leveraged ETFs — international & fixed income (bull)
+  leveraged_international:
+    - EDC    # Daily MSCI Emerging Markets Bull 3X
+    - YINN   # Daily FTSE China Bull 3X
+    - KORU   # Daily MSCI South Korea Bull 3X
+    - MEXX   # Daily MSCI Mexico Bull 3X
+    - EURL   # Daily FTSE Europe Bull 3X
+    - EET    # Ultra MSCI Emerging Markets 2X
+    - EFO    # Ultra MSCI EAFE 2X
+    - EZJ    # Ultra MSCI Japan 2X
+    - UBR    # Ultra MSCI Brazil Capped 2X
+    - INDL   # Daily MSCI India Bull 2X
+    - TMF    # Daily 20+ Year Treasury Bull 3X
+    - TYD    # Daily 7-10 Year Treasury Bull 3X
+    - UBT    # Ultra 20+ Year Treasury 2X
+    - UST    # Ultra 7-10 Year Treasury 2X
+    - UJB    # Ultra High Yield 2X
