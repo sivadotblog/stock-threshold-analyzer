@@ -274,6 +274,21 @@
       .map((t) => `<option value="${t.ticker}">${t.ticker} — ${t.name}</option>`)
       .join("");
 
+    // Filter input
+    const filterInput = document.getElementById("sma-ticker-filter");
+    if (filterInput) {
+      filterInput.addEventListener("input", () => {
+        const q = filterInput.value.toLowerCase();
+        for (const opt of tickerSelect.options) {
+          opt.hidden = !opt.text.toLowerCase().includes(q);
+        }
+        if (tickerSelect.selectedOptions[0]?.hidden) {
+          const first = Array.from(tickerSelect.options).find((o) => !o.hidden);
+          if (first) { tickerSelect.value = first.value; update(); }
+        }
+      });
+    }
+
     updatedEl.textContent = `Data refreshed ${new Date(
       manifest.generated_at,
     ).toLocaleString()}`;

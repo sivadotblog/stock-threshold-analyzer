@@ -3,6 +3,8 @@
 <div class="sma-controls">
   <div>
     <label for="sma-ticker">Ticker</label>
+    <input id="sma-ticker-filter" type="text" placeholder="Search…"
+           autocomplete="off" style="margin-bottom:4px;width:100%;display:block;" />
     <select id="sma-ticker"></select>
   </div>
   <div>

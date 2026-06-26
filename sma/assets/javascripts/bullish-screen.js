@@ -109,21 +109,50 @@
     return (n > 0 ? "+" : "") + n + (n > 0 ? "↑" : "↓");
   }
 
+  // Sort state
+  let sortCol = "rank";
+  let sortAsc = true;
+
+  const COLS = [
+    { key: "rank",            label: "#",      left: false, val: (r) => r.rank },
+    { key: "ticker",          label: "Ticker", left: true,  val: (r) => r.ticker },
+    { key: "bullish_score",   label: "Score",  left: false, val: (r) => r.bullish_score },
+    { key: "current_streak",  label: "Streak", left: false, val: (r) => r.current_streak || 0 },
+    { key: "cagr_pct",        label: "CAGR%",  left: false, val: (r) => r.cagr_pct },
+    { key: "max_drawdown_pct",label: "MaxDD%", left: false, val: (r) => r.max_drawdown_pct },
+    { key: "swings",          label: "↑/↓",   left: false, val: (r) => r.n_up + r.n_down },
+  ];
+
+  function sortedResults(results) {
+    const col = COLS.find((c) => c.key === sortCol);
+    if (!col) return results;
+    return [...results].sort((a, b) => {
+      const av = col.val(a), bv = col.val(b);
+      return sortAsc
+        ? (av < bv ? -1 : av > bv ? 1 : 0)
+        : (av > bv ? -1 : av < bv ? 1 : 0);
+    });
+  }
+
   function renderTable(el, results) {
     const S = "text-align:right;padding:3px 6px;white-space:nowrap;";
     const L = "text-align:left;padding:3px 6px;white-space:nowrap;";
-    const th = (t, left) =>
-      `<th style="${left ? L : S}font-weight:600;">${t}</th>`;
+    const TH = "cursor:pointer;user-select:none;";
+
+    const sorted = sortedResults(results);
+
+    const headers = COLS.map((c) => {
+      const arrow = c.key === sortCol ? (sortAsc ? " ▲" : " ▼") : "";
+      const align = c.left ? L : S;
+      return `<th data-col="${c.key}" style="${align}${TH}font-weight:600;">${c.label}${arrow}</th>`;
+    }).join("");
 
     let html =
       '<div style="overflow-x:auto;">' +
       '<table style="border-collapse:collapse;font-size:0.82em;width:100%;">' +
-      "<thead><tr>" +
-      th("#") + th("Ticker", true) +
-      th("Score") + th("Streak") + th("CAGR%") + th("MaxDD%") + th("↑/↓") +
-      "</tr></thead><tbody>";
+      `<thead><tr>${headers}</tr></thead><tbody>`;
 
-    for (const r of results) {
+    for (const r of sorted) {
       const hot = r.ticker === HIGHLIGHT ? "background:rgba(220,38,38,0.10);" : "";
       const streak = r.current_streak || 0;
       const streakColor = streak > 0 ? "color:#16a34a;" : streak < 0 ? "color:#dc2626;" : "";
@@ -140,6 +169,20 @@
     }
     html += "</tbody></table></div>";
     el.innerHTML = html;
+
+    // Wire up header clicks
+    el.querySelectorAll("th[data-col]").forEach((th) => {
+      th.addEventListener("click", () => {
+        const col = th.dataset.col;
+        if (sortCol === col) {
+          sortAsc = !sortAsc;
+        } else {
+          sortCol = col;
+          sortAsc = col === "rank" || col === "ticker";
+        }
+        renderTable(el, results);
+      });
+    });
   }
 
   function render() {
