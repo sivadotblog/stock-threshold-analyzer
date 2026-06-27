@@ -6,7 +6,7 @@
 # Run screen_bullish.py first, then generate_data.py.
 site:
   lookback_years: 5
-  top_n: 100
+  top_n: 600
 
 # Screener defaults used by screen_bullish.py.
 # All can be overridden at the command line.
