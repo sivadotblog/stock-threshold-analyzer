@@ -9,18 +9,10 @@
 (function () {
   "use strict";
 
-  // ---------- Configuration ----------
-  // Resolve the data directory relative to the current page. With MkDocs
-  // Material's "use_directory_urls" we may be at .../sma/ or .../sma/chart/.
-  // Both should resolve to .../sma/data/.
   function dataBase() {
-    const here = window.location.pathname.replace(/\/+$/, "");
-    // Trim trailing /chart or /chart/index.html if present
-    const trimmed = here.replace(/\/chart(\/index\.html)?$/, "");
-    return trimmed + "/data";
+    return window.__DATA_BASE__ || "/stock-threshold-analyzer/data";
   }
 
-  // Cache of fetched JSON payloads by ticker
   const cache = new Map();
 
   async function loadManifest() {
@@ -97,7 +89,6 @@
 
   // ---------- Rendering ----------
   function buildTraces(prices, events) {
-    // Base grey price line
     const traces = [
       {
         x: prices.map((p) => p.d),
@@ -110,8 +101,6 @@
       },
     ];
 
-    // Colored segments between consecutive events
-    const priceByDate = new Map(prices.map((p) => [p.d, p.c]));
     const dateIdx = new Map(prices.map((p, i) => [p.d, i]));
     for (let i = 1; i < events.length; i++) {
       const segStart = events[i - 1].d;
@@ -132,7 +121,6 @@
       });
     }
 
-    // Trigger markers
     const ups = events.filter((e) => e.dir === "up");
     const downs = events.filter((e) => e.dir === "down");
     traces.push({
@@ -142,8 +130,7 @@
       mode: "markers",
       name: `+N% triggers (${ups.length})`,
       marker: { color: "#16a34a", size: 9, line: { color: "white", width: 1 } },
-      hovertemplate:
-        "+trigger<br>%{x|%b %d, %Y}<br>$%{y:.2f}<extra></extra>",
+      hovertemplate: "+trigger<br>%{x|%b %d, %Y}<br>$%{y:.2f}<extra></extra>",
     });
     traces.push({
       x: downs.map((e) => e.d),
@@ -152,8 +139,7 @@
       mode: "markers",
       name: `-N% triggers (${downs.length})`,
       marker: { color: "#dc2626", size: 9, line: { color: "white", width: 1 } },
-      hovertemplate:
-        "-trigger<br>%{x|%b %d, %Y}<br>$%{y:.2f}<extra></extra>",
+      hovertemplate: "-trigger<br>%{x|%b %d, %Y}<br>$%{y:.2f}<extra></extra>",
     });
 
     return traces;
@@ -165,7 +151,6 @@
     const downs = events.filter((e) => e.dir === "down").length;
     const streaks = findDownStreaks(events, minStreak);
 
-    // Stats panel
     const statsEl = document.getElementById("sma-stats");
     const fmtDate = (d) =>
       new Date(d + "T00:00:00").toLocaleDateString(undefined, {
@@ -180,8 +165,8 @@
       <div class="sma-stat"><span class="lbl">Down-streaks (≥${minStreak})</span><span class="val">${streaks.length}</span></div>
     `;
 
-    // Chart
     const traces = buildTraces(payload.prices, events);
+    const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     const layout = {
       title: {
         text: `${payload.ticker} — ±${thresholdPct}% moving-anchor events`,
@@ -189,34 +174,23 @@
       },
       margin: { l: 60, r: 20, t: 60, b: 50 },
       hovermode: "closest",
-      xaxis: { title: "Date", showgrid: true, gridcolor: "#e5e7eb" },
+      xaxis: { title: "Date", showgrid: true, gridcolor: isDark ? "#374151" : "#e5e7eb" },
       yaxis: {
         title: "Adjusted close (USD)",
         showgrid: true,
-        gridcolor: "#e5e7eb",
+        gridcolor: isDark ? "#374151" : "#e5e7eb",
       },
       legend: { orientation: "h", y: -0.18 },
-      plot_bgcolor: "white",
-      paper_bgcolor: "white",
+      plot_bgcolor: isDark ? "#1e1e2e" : "white",
+      paper_bgcolor: isDark ? "#1e1e2e" : "white",
+      font: isDark ? { color: "#e5e7eb" } : {},
     };
-
-    // Dark-mode detection (MkDocs Material toggle)
-    const isDark =
-      document.body.getAttribute("data-md-color-scheme") === "slate";
-    if (isDark) {
-      layout.plot_bgcolor = "#1e1e2e";
-      layout.paper_bgcolor = "#1e1e2e";
-      layout.font = { color: "#e5e7eb" };
-      layout.xaxis.gridcolor = "#374151";
-      layout.yaxis.gridcolor = "#374151";
-    }
 
     Plotly.newPlot("sma-chart", traces, layout, {
       responsive: true,
       displaylogo: false,
     });
 
-    // Streak table
     const tblEl = document.getElementById("sma-streaks");
     if (!streaks.length) {
       tblEl.innerHTML = `<p class="sma-empty">No down-streaks of ≥${minStreak} consecutive –${thresholdPct}% drops in this range.</p>`;
@@ -252,7 +226,7 @@
   // ---------- Wire up controls ----------
   async function init() {
     const chartEl = document.getElementById("sma-chart");
-    if (!chartEl) return; // not on the chart page
+    if (!chartEl) return;
 
     const tickerSelect = document.getElementById("sma-ticker");
     const thresholdInput = document.getElementById("sma-threshold");
@@ -269,12 +243,10 @@
       return;
     }
 
-    // Populate dropdown
     tickerSelect.innerHTML = manifest.tickers
       .map((t) => `<option value="${t.ticker}">${t.ticker} — ${t.name}</option>`)
       .join("");
 
-    // Filter input
     const filterInput = document.getElementById("sma-ticker-filter");
     if (filterInput) {
       filterInput.addEventListener("input", () => {
@@ -289,9 +261,7 @@
       });
     }
 
-    updatedEl.textContent = `Data refreshed ${new Date(
-      manifest.generated_at,
-    ).toLocaleString()}`;
+    updatedEl.textContent = `Data refreshed ${new Date(manifest.generated_at).toLocaleString()}`;
 
     async function update() {
       const ticker = tickerSelect.value;
@@ -312,20 +282,12 @@
     thresholdInput.addEventListener("input", update);
     minStreakInput.addEventListener("input", update);
 
-    // Re-render on Material's color-scheme toggle
-    const observer = new MutationObserver(() => update());
-    observer.observe(document.body, {
-      attributes: true,
-      attributeFilter: ["data-md-color-scheme"],
-    });
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => update());
 
     await update();
   }
 
-  // MkDocs Material with navigation.instant re-fires document$ on nav.
-  if (window.document$) {
-    window.document$.subscribe(() => init());
-  } else if (document.readyState !== "loading") {
+  if (document.readyState !== "loading") {
     init();
   } else {
     document.addEventListener("DOMContentLoaded", init);

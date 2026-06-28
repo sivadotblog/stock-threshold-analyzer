@@ -35,7 +35,7 @@ _CONFIG = yaml.safe_load((_ROOT / "config.yaml").read_text())
 _SITE = _CONFIG["site"]
 LOOKBACK_YEARS: int = _SITE["lookback_years"]
 TOP_N: int = _SITE["top_n"]
-OUTPUT_DIR = _ROOT / "sma" / "data"
+OUTPUT_DIR = _ROOT / "public" / "data"
 SCREEN_PATH = OUTPUT_DIR / "bullish_screen.json"
 
 

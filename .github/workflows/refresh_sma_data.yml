@@ -28,7 +28,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
 
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: uv sync
 
       - name: Screen bullish oscillators
@@ -37,13 +37,22 @@ jobs:
       - name: Generate site data
         run: uv run python generate_data.py
 
-      - name: Build MkDocs site
-        run: uv run mkdocs build
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Astro dependencies
+        run: npm ci
+
+      - name: Build Astro site
+        run: npm run build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./site
+          path: ./dist
 
   deploy:
     environment:

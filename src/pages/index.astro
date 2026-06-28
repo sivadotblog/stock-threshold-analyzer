@@ -1,0 +1,51 @@
+---
+import Base from '../layouts/Base.astro';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+<Base title="Leaderboard">
+  <h1>Bullish Oscillators — "Stocks like ZETA"</h1>
+  <p>
+    Stocks that <strong>net-trend up</strong> while swinging ±10% up and down repeatedly.
+    Ranked by <code>bullish_score</code> (= oscillation <strong>activity</strong> × signed
+    <strong>trend</strong>). Each dot is a stock; the <strong>top-right</strong> — strong
+    uptrend <em>and</em> many two-sided swings — is the most ZETA-like.
+    <strong>ZETA</strong> is highlighted as the archetype.
+  </p>
+
+  <p id="bullish-meta"><em>Loading screen…</em></p>
+
+  <div id="bullish-scatter" style="min-height:520px;"></div>
+
+  <div id="bullish-table"></div>
+
+  <div class="field-legend">
+    <h2>Field Descriptions</h2>
+    <table>
+      <thead><tr><th>Field</th><th>What it means</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Score</strong></td>
+          <td>Composite 0–1 rating: how much this stock behaves like ZETA. Combines how often it swings ±10% <em>and</em> whether those swings are net upward. 1.0 = perfect bullish oscillator, 0 = doesn't qualify.</td>
+        </tr>
+        <tr>
+          <td><strong>Streak</strong></td>
+          <td>Current momentum. How many consecutive ±10% threshold crossings have gone the same direction. <code>+3↑</code> = the last 3 events were all up legs. <code>-2↓</code> = last 2 were down legs.</td>
+        </tr>
+        <tr>
+          <td><strong>CAGR%</strong></td>
+          <td>Compound Annual Growth Rate — the annualized return over the 5-year lookback. 20% means the stock roughly doubled every ~3.5 years on average.</td>
+        </tr>
+        <tr>
+          <td><strong>MaxDD%</strong></td>
+          <td>Maximum Drawdown — the worst peak-to-trough drop over the 5 years. High scores often come with brutal drawdowns because volatile stocks swing hard in both directions.</td>
+        </tr>
+        <tr>
+          <td><strong>↑/↓</strong></td>
+          <td>Raw count of up-legs / down-legs. A balanced ratio means it swings both ways, which is what the screener rewards.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script is:inline src={`${base}/js/bullish-screen.js`}></script>
+</Base>

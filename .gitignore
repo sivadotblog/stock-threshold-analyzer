@@ -7,7 +7,9 @@ venv/
 output/
 .idea/
 .vscode/
-site/
 .cache/
-sma/data/*.json
+node_modules/
+dist/
+.astro/
+public/data/*.json
 

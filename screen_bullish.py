@@ -7,7 +7,7 @@ prices and score them with ``compute_bullish_oscillation`` (rewards an UP-trend
 with frequent two-sided +/-N% swings). Ranks by ``bullish_score`` descending and:
 
   * prints a leaderboard table, and
-  * writes a structured ``sma/data/bullish_screen.json`` (per-stock metric array)
+  * writes a structured ``public/data/bullish_screen.json`` (per-stock metric array)
     for the static site.
 
 Usage
@@ -34,7 +34,14 @@ _SCREEN = _CONFIG["screen"]
 _UNI = _CONFIG["universe"]
 UNIVERSE: list[str] = sorted({t for tickers in _UNI.values() for t in tickers})
 
-OUTPUT_PATH = Path(__file__).parent / "sma" / "data" / "bullish_screen.json"
+# Map each ticker to its config category (e.g. "leveraged_sector", "sp500").
+# A ticker listed in several categories keeps the first one encountered.
+TICKER_CATEGORY: dict[str, str] = {}
+for _cat, _tickers in _UNI.items():
+    for _t in _tickers:
+        TICKER_CATEGORY.setdefault(_t, _cat)
+
+OUTPUT_PATH = Path(__file__).parent / "public" / "data" / "bullish_screen.json"
 
 
 def parse_args() -> argparse.Namespace:
@@ -108,6 +115,7 @@ def main() -> int:
             {
                 "rank": rank,
                 "ticker": r["ticker"],
+                "category": TICKER_CATEGORY.get(r["ticker"], ""),
                 "bullish_score": r["bullish_score"],
                 "activity": r["activity"],
                 "trend": r["trend"],

@@ -4,8 +4,6 @@
  *   - a Plotly scatter (CAGR vs. number of two-sided swings, colored by
  *     bullish_score) with ZETA highlighted as the archetype, and
  *   - a ranked leaderboard table.
- *
- * Follows the same Material-instant-nav pattern as reports.md / sma-chart.js.
  */
 
 (function () {
@@ -13,11 +11,8 @@
 
   const HIGHLIGHT = "ZETA";
 
-  // Resolve .../sma/data regardless of whether we're at .../sma/bullish/ etc.
   function dataBase() {
-    const here = window.location.pathname.replace(/\/+$/, "");
-    const trimmed = here.replace(/\/bullish(\/index\.html)?$/, "");
-    return trimmed + "/data";
+    return window.__DATA_BASE__ || "/stock-threshold-analyzer/data";
   }
 
   function fmt(n, d) {
@@ -109,18 +104,18 @@
     return (n > 0 ? "+" : "") + n + (n > 0 ? "↑" : "↓");
   }
 
-  // Sort state
   let sortCol = "rank";
   let sortAsc = true;
 
   const COLS = [
-    { key: "rank",            label: "#",      left: false, val: (r) => r.rank },
-    { key: "ticker",          label: "Ticker", left: true,  val: (r) => r.ticker },
-    { key: "bullish_score",   label: "Score",  left: false, val: (r) => r.bullish_score },
-    { key: "current_streak",  label: "Streak", left: false, val: (r) => r.current_streak || 0 },
-    { key: "cagr_pct",        label: "CAGR%",  left: false, val: (r) => r.cagr_pct },
-    { key: "max_drawdown_pct",label: "MaxDD%", left: false, val: (r) => r.max_drawdown_pct },
-    { key: "swings",          label: "↑/↓",   left: false, val: (r) => r.n_up + r.n_down },
+    { key: "rank",            label: "#",        left: false, val: (r) => r.rank },
+    { key: "ticker",          label: "Ticker",   left: true,  val: (r) => r.ticker },
+    { key: "category",        label: "Category", left: true,  val: (r) => r.category || "" },
+    { key: "bullish_score",   label: "Score",    left: false, val: (r) => r.bullish_score },
+    { key: "current_streak",  label: "Streak",   left: false, val: (r) => r.current_streak || 0 },
+    { key: "cagr_pct",        label: "CAGR%",    left: false, val: (r) => r.cagr_pct },
+    { key: "max_drawdown_pct",label: "MaxDD%",   left: false, val: (r) => r.max_drawdown_pct },
+    { key: "swings",          label: "↑/↓",      left: false, val: (r) => r.n_up + r.n_down },
   ];
 
   function sortedResults(results) {
@@ -157,9 +152,10 @@
       const streak = r.current_streak || 0;
       const streakColor = streak > 0 ? "color:#16a34a;" : streak < 0 ? "color:#dc2626;" : "";
       html +=
-        `<tr style="border-top:1px solid var(--md-default-fg-color--lightest);${hot}">` +
+        `<tr style="border-top:1px solid var(--border,#e5e7eb);${hot}">` +
         `<td style="${S}">${r.rank}</td>` +
         `<td style="${L}font-weight:600;"><a href="https://finance.yahoo.com/quote/${r.ticker}" target="_blank" rel="noopener">${r.ticker}</a></td>` +
+        `<td style="${L}color:var(--fg-muted,#6b7280);">${r.category || "—"}</td>` +
         `<td style="${S}"><b>${fmt(r.bullish_score, 3)}</b></td>` +
         `<td style="${S}${streakColor}font-weight:600;">${streakLabel(streak)}</td>` +
         `<td style="${S}">${fmt(r.cagr_pct, 1)}</td>` +
@@ -170,7 +166,6 @@
     html += "</tbody></table></div>";
     el.innerHTML = html;
 
-    // Wire up header clicks
     el.querySelectorAll("th[data-col]").forEach((th) => {
       th.addEventListener("click", () => {
         const col = th.dataset.col;
@@ -178,7 +173,7 @@
           sortAsc = !sortAsc;
         } else {
           sortCol = col;
-          sortAsc = col === "rank" || col === "ticker";
+          sortAsc = col === "rank" || col === "ticker" || col === "category";
         }
         renderTable(el, results);
       });
@@ -189,7 +184,7 @@
     const scatterEl = document.getElementById("bullish-scatter");
     const tableEl = document.getElementById("bullish-table");
     const metaEl = document.getElementById("bullish-meta");
-    if (!scatterEl || typeof Plotly === "undefined") return; // not on this page
+    if (!scatterEl || typeof Plotly === "undefined") return;
 
     fetch(`${dataBase()}/bullish_screen.json`, { cache: "no-store" })
       .then((resp) => {
@@ -217,8 +212,8 @@
       });
   }
 
-  if (typeof document$ !== "undefined" && document$.subscribe) {
-    document$.subscribe(render);
+  if (document.readyState !== "loading") {
+    render();
   } else {
     document.addEventListener("DOMContentLoaded", render);
   }

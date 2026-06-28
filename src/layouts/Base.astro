@@ -1,0 +1,30 @@
+---
+import '../styles/global.css';
+const { title } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const dataBase = base + '/data';
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{title} — Stock Threshold Analyzer</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" is:inline></script>
+  <script define:vars={{ dataBase }}>
+    window.__DATA_BASE__ = dataBase;
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <span class="site-title">Stock Threshold Analyzer</span>
+    <nav>
+      <a href={`${base}/`}>Leaderboard</a>
+      <a href={`${base}/chart/`}>Chart</a>
+    </nav>
+  </header>
+  <main>
+    <slot />
+  </main>
+</body>
+</html>
