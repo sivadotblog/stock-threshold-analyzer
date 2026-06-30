@@ -636,6 +636,9 @@ universe:
     - OSCR
 
   # Leveraged ETFs — broad market (3x bull)
+  leveraged_4x_broad:
+    - XXXX # MAX S&P 500 4X Leveraged ETN
+
   leveraged_3x_broad:
     - TQQQ # UltraPro QQQ — Nasdaq-100
     - UPRO # UltraPro S&P500

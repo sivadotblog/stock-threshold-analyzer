@@ -63,23 +63,21 @@ def main() -> None:
     except Exception as e:
         fail(f"Yahoo Finance error for `{ticker}`: {e}")
 
-    # Must be a real, listed equity or ETF (not OTC junk / placeholder)
+    # Must be a real listed security with a live price
     quote_type = info.get("quoteType", "")
-    exchange = info.get("exchange", "")
-    market_cap = info.get("marketCap") or 0
     price = info.get("regularMarketPrice") or info.get("currentPrice") or 0
 
     VALID_QUOTE_TYPES = {"EQUITY", "ETF", "MUTUALFUND"}
-    # Reject if not a recognised quote type or no real price
     if quote_type not in VALID_QUOTE_TYPES:
         fail(f"`{ticker}` is not a listed equity or ETF (quoteType={quote_type or 'unknown'})")
 
     if price == 0:
         fail(f"`{ticker}` has no current market price — may be delisted or invalid")
 
-    # Require at least $50M market cap to filter out micro/OTC junk
+    # For equities only: require at least $50M market cap to filter OTC shells
+    market_cap = info.get("marketCap") or 0
     if quote_type == "EQUITY" and market_cap < 50_000_000:
-        fail(f"`{ticker}` market cap is too small (${market_cap:,.0f}) — not suitable for this screener")
+        fail(f"`{ticker}` market cap ${market_cap:,.0f} is too small — not suitable for this screener")
 
     name = info.get("longName") or info.get("shortName") or ticker
 
