@@ -55,30 +55,33 @@ def main() -> None:
     if ticker in existing:
         fail(f"`{ticker}` is already in the screening universe")
 
-    # Validate with Yahoo Finance — fetch recent history
+    # Validate with Yahoo Finance — require real exchange listing and recent volume
     print(f"Validating {ticker} on Yahoo Finance …")
     try:
-        hist = yf.Ticker(ticker).history(period="5d")
+        t = yf.Ticker(ticker)
+        info = t.info
     except Exception as e:
         fail(f"Yahoo Finance error for `{ticker}`: {e}")
 
-    if hist.empty:
-        fail(f"`{ticker}` not found on Yahoo Finance (no price data returned)")
+    # Must be a real, listed equity or ETF (not OTC junk / placeholder)
+    quote_type = info.get("quoteType", "")
+    exchange = info.get("exchange", "")
+    market_cap = info.get("marketCap") or 0
+    price = info.get("regularMarketPrice") or info.get("currentPrice") or 0
 
-    # Get display name
-    try:
-        info = yf.Ticker(ticker).fast_info
-        name = getattr(info, "description", "") or ticker
-    except Exception:
-        name = ticker
+    VALID_QUOTE_TYPES = {"EQUITY", "ETF", "MUTUALFUND"}
+    # Reject if not a recognised quote type or no real price
+    if quote_type not in VALID_QUOTE_TYPES:
+        fail(f"`{ticker}` is not a listed equity or ETF (quoteType={quote_type or 'unknown'})")
 
-    # Prettier name fallback via .info (slower but more complete)
-    try:
-        long_name = yf.Ticker(ticker).info.get("longName") or yf.Ticker(ticker).info.get("shortName", "")
-        if long_name:
-            name = long_name
-    except Exception:
-        pass
+    if price == 0:
+        fail(f"`{ticker}` has no current market price — may be delisted or invalid")
+
+    # Require at least $50M market cap to filter out micro/OTC junk
+    if quote_type == "EQUITY" and market_cap < 50_000_000:
+        fail(f"`{ticker}` market cap is too small (${market_cap:,.0f}) — not suitable for this screener")
+
+    name = info.get("longName") or info.get("shortName") or ticker
 
     # Add to config.yaml supplement — string manipulation to preserve comments
     if INSERT_BEFORE not in config_text:
