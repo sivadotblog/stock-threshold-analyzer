@@ -635,6 +635,7 @@ universe:
     - HIMS
     - OSCR
 
+    - XXXX
   # Leveraged ETFs — broad market (3x bull)
   leveraged_3x_broad:
     - TQQQ # UltraPro QQQ — Nasdaq-100
