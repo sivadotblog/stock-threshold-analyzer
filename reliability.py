@@ -285,6 +285,7 @@ def compute_bullish_oscillation(prices: pd.DataFrame,
         return out
 
     prices = prices.reset_index(drop=True)
+    prices["date"] = pd.to_datetime(prices["date"], format="mixed", dayfirst=False)
     events = find_threshold_events(prices, threshold_pct)
     ev = events[events["direction"].isin(["up", "down"])].reset_index(drop=True)
 
