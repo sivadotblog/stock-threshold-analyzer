@@ -1,15 +1,12 @@
-/* Bullish Oscillator screen visualizer.
- *
- * Loads data/bullish_screen.json (produced by screen_bullish.py) and renders:
- *   - a Plotly scatter (CAGR vs. number of two-sided swings, colored by
- *     bullish_score) with ZETA highlighted as the archetype, and
- *   - a ranked leaderboard table.
- */
-
+/* Bullish Oscillator screen visualizer — Tabulator edition */
 (function () {
   "use strict";
 
   const HIGHLIGHT = "ZETA";
+  const TODAY = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  })();
 
   function dataBase() {
     return window.__DATA_BASE__ || "/stock-threshold-analyzer/data";
@@ -19,12 +16,18 @@
     return (n === null || n === undefined || isNaN(n)) ? "—" : Number(n).toFixed(d);
   }
 
+  function streakLabel(n) {
+    if (!n) return "—";
+    return (n > 0 ? "+" : "") + n + (n > 0 ? "↑" : "↓");
+  }
+
+  // ---- Scatter chart ----
   function renderScatter(el, results) {
     const others = results.filter((r) => r.ticker !== HIGHLIGHT);
-    const zeta = results.find((r) => r.ticker === HIGHLIGHT);
+    const zeta   = results.find((r)  => r.ticker === HIGHLIGHT);
 
     const swings = (r) => r.n_up + r.n_down;
-    const hover = (r) =>
+    const hover  = (r) =>
       `<b>${r.ticker}</b> &nbsp;#${r.rank}<br>` +
       `bullish_score: <b>${fmt(r.bullish_score, 3)}</b><br>` +
       `activity: ${fmt(r.activity, 2)} &nbsp; trend: ${fmt(r.trend, 2)}<br>` +
@@ -33,8 +36,7 @@
       `swings: ${r.n_up}↑ / ${r.n_down}↓`;
 
     const cloud = {
-      type: "scattergl",
-      mode: "markers",
+      type: "scattergl", mode: "markers",
       x: others.map((r) => r.cagr_pct),
       y: others.map(swings),
       text: others.map(hover),
@@ -42,9 +44,7 @@
       marker: {
         size: 9,
         color: others.map((r) => r.bullish_score),
-        colorscale: "Viridis",
-        cmin: 0,
-        cmax: 1,
+        colorscale: "Viridis", cmin: 0, cmax: 1,
         showscale: true,
         colorbar: { title: "bullish<br>score", thickness: 14 },
         line: { width: 0.5, color: "rgba(0,0,0,0.25)" },
@@ -52,169 +52,161 @@
       name: "stocks",
     };
 
+    const cs       = getComputedStyle(document.documentElement);
+    const clrAccent = cs.getPropertyValue("--accent").trim()    || "#0284c7";
+    const clrBg     = cs.getPropertyValue("--bg").trim()        || "#f7fafc";
+    const clrFg     = cs.getPropertyValue("--fg").trim()        || "#2d3748";
+    const clrBorder = cs.getPropertyValue("--border").trim()    || "#cbd5e0";
+    const clrMuted  = cs.getPropertyValue("--fg-subtle").trim() || "#718096";
+
     const traces = [cloud];
-    const annotations = [];
     if (zeta) {
       traces.push({
-        type: "scattergl",
-        mode: "markers+text",
-        x: [zeta.cagr_pct],
-        y: [swings(zeta)],
-        text: ["ZETA"],
-        textposition: "top center",
-        textfont: { size: 13, color: "#dc2626" },
-        hovertext: [hover(zeta)],
-        hoverinfo: "text",
-        marker: {
-          symbol: "star",
-          size: 20,
-          color: "#dc2626",
-          line: { width: 1, color: "white" },
-        },
-        name: "ZETA (archetype)",
+        type: "scattergl", mode: "markers+text",
+        x: [zeta.cagr_pct], y: [swings(zeta)],
+        text: ["ZETA"], textposition: "top center",
+        textfont: { size: 13, color: clrAccent },
+        hovertext: [hover(zeta)], hoverinfo: "text",
+        marker: { symbol: "star", size: 20, color: clrAccent, line: { width: 1.5, color: "white" } },
         showlegend: false,
       });
     }
 
-    const layout = {
-      title: { text: "Bullish oscillators — CAGR vs. swing count" },
-      xaxis: {
-        title: "Trend  →  CAGR (% / yr)",
-        zeroline: true,
-        zerolinecolor: "#9ca3af",
-        zerolinewidth: 1.5,
-      },
-      yaxis: { title: "Oscillation  →  # of ±10% swings (up + down)" },
+    Plotly.newPlot(el, traces, {
+      title: { text: "Bullish oscillators — CAGR vs. swing count", font: { color: clrFg } },
+      xaxis: { title: "Trend  →  CAGR (% / yr)", zeroline: true, zerolinecolor: clrMuted, zerolinewidth: 1.5, gridcolor: clrBorder, color: clrFg },
+      yaxis: { title: "Oscillation  →  # of ±10% swings (up + down)", gridcolor: clrBorder, color: clrFg },
       hovermode: "closest",
       margin: { t: 50, r: 20, b: 55, l: 60 },
-      shapes: [
-        {
-          type: "line", x0: 0, x1: 0, yref: "paper", y0: 0, y1: 1,
-          line: { color: "#9ca3af", width: 1, dash: "dot" },
-        },
-      ],
-      annotations: annotations,
+      paper_bgcolor: clrBg, plot_bgcolor: clrBg, font: { color: clrFg },
+      shapes: [{ type: "line", x0: 0, x1: 0, yref: "paper", y0: 0, y1: 1, line: { color: clrMuted, width: 1, dash: "dot" } }],
+    }, { responsive: true, displaylogo: false });
+  }
+
+  // ---- Tabulator table ----
+  let tabulatorInstance = null;
+
+  function buildTable(el, results) {
+    if (tabulatorInstance) { tabulatorInstance.destroy(); tabulatorInstance = null; }
+
+    results.forEach(r => { r.swings = r.n_up + r.n_down; });
+
+    const streakFmt = (cell) => {
+      const r = cell.getRow().getData();
+      const s = r.current_streak || 0;
+      const color = s > 0 ? "var(--up,#0369a1)" : s < 0 ? "var(--down,#c2410c)" : "inherit";
+      let html = `<span style="color:${color};font-weight:700;">${streakLabel(s)}</span>`;
+      if (r.last_event_date === TODAY) {
+        const sign = s >= 0 ? "+1↑" : "-1↓";
+        const bg   = s >= 0 ? "var(--up-bg,#e0f2fe)" : "var(--down-bg,#fff7ed)";
+        html += `<span style="margin-left:5px;font-size:0.75em;font-weight:700;padding:2px 6px;border-radius:20px;background:${bg};color:${color};">${sign}</span>`;
+      }
+      return html;
     };
 
-    Plotly.newPlot(el, traces, layout, { responsive: true, displaylogo: false });
-  }
-
-  function streakLabel(n) {
-    if (!n) return "—";
-    return (n > 0 ? "+" : "") + n + (n > 0 ? "↑" : "↓");
-  }
-
-  let sortCol = "rank";
-  let sortAsc = true;
-
-  const COLS = [
-    { key: "rank",            label: "#",        left: false, val: (r) => r.rank },
-    { key: "ticker",          label: "Ticker",   left: true,  val: (r) => r.ticker },
-    { key: "category",        label: "Category", left: true,  val: (r) => r.category || "" },
-    { key: "bullish_score",   label: "Score",    left: false, val: (r) => r.bullish_score },
-    { key: "current_streak",  label: "Streak",   left: false, val: (r) => r.current_streak || 0 },
-    { key: "cagr_pct",        label: "CAGR%",    left: false, val: (r) => r.cagr_pct },
-    { key: "max_drawdown_pct",label: "MaxDD%",   left: false, val: (r) => r.max_drawdown_pct },
-    { key: "swings",          label: "↑/↓",      left: false, val: (r) => r.n_up + r.n_down },
-  ];
-
-  function sortedResults(results) {
-    const col = COLS.find((c) => c.key === sortCol);
-    if (!col) return results;
-    return [...results].sort((a, b) => {
-      const av = col.val(a), bv = col.val(b);
-      return sortAsc
-        ? (av < bv ? -1 : av > bv ? 1 : 0)
-        : (av > bv ? -1 : av < bv ? 1 : 0);
-    });
-  }
-
-  function renderTable(el, results) {
-    const S = "text-align:right;padding:3px 6px;white-space:nowrap;";
-    const L = "text-align:left;padding:3px 6px;white-space:nowrap;";
-    const TH = "cursor:pointer;user-select:none;";
-
-    const sorted = sortedResults(results);
-
-    const headers = COLS.map((c) => {
-      const arrow = c.key === sortCol ? (sortAsc ? " ▲" : " ▼") : "";
-      const align = c.left ? L : S;
-      return `<th data-col="${c.key}" style="${align}${TH}font-weight:600;">${c.label}${arrow}</th>`;
-    }).join("");
-
-    let html =
-      '<div style="overflow-x:auto;">' +
-      '<table style="border-collapse:collapse;font-size:0.82em;width:100%;">' +
-      `<thead><tr>${headers}</tr></thead><tbody>`;
-
-    for (const r of sorted) {
-      const hot = r.ticker === HIGHLIGHT ? "background:rgba(220,38,38,0.10);" : "";
-      const streak = r.current_streak || 0;
-      const streakColor = streak > 0 ? "color:#16a34a;" : streak < 0 ? "color:#dc2626;" : "";
-      html +=
-        `<tr style="border-top:1px solid var(--border,#e5e7eb);${hot}">` +
-        `<td style="${S}">${r.rank}</td>` +
-        `<td style="${L}font-weight:600;"><a href="https://finance.yahoo.com/quote/${r.ticker}" target="_blank" rel="noopener">${r.ticker}</a></td>` +
-        `<td style="${L}color:var(--fg-muted,#6b7280);">${r.category || "—"}</td>` +
-        `<td style="${S}"><b>${fmt(r.bullish_score, 3)}</b></td>` +
-        `<td style="${S}${streakColor}font-weight:600;">${streakLabel(streak)}</td>` +
-        `<td style="${S}">${fmt(r.cagr_pct, 1)}</td>` +
-        `<td style="${S}">${fmt(r.max_drawdown_pct, 1)}</td>` +
-        `<td style="${S}">${r.n_up}/${r.n_down}</td>` +
-        "</tr>";
-    }
-    html += "</tbody></table></div>";
-    el.innerHTML = html;
-
-    el.querySelectorAll("th[data-col]").forEach((th) => {
-      th.addEventListener("click", () => {
-        const col = th.dataset.col;
-        if (sortCol === col) {
-          sortAsc = !sortAsc;
-        } else {
-          sortCol = col;
-          sortAsc = col === "rank" || col === "ticker" || col === "category";
+    tabulatorInstance = new Tabulator(el, {
+      data: results,
+      layout: "fitColumns",
+      pagination: true,
+      paginationSize: 50,
+      paginationSizeSelector: [25, 50, 100, 250],
+      paginationCounter: "rows",
+      initialSort: [{ column: "rank", dir: "asc" }],
+      columns: [
+        { title: "#",       field: "rank",            sorter: "number", hozAlign: "right", width: 55 },
+        { title: "Ticker",  field: "ticker",           sorter: "string", width: 95,
+          formatter: (cell) => {
+            const t = cell.getValue();
+            return `<a href="https://finance.yahoo.com/quote/${t}" target="_blank" rel="noopener" style="font-weight:700;color:var(--accent,#0284c7);">${t}</a>`;
+          }
+        },
+        { title: "Category", field: "category",       sorter: "string", minWidth: 110,
+          formatter: (cell) => `<span style="color:var(--fg-muted,#4a5568);">${cell.getValue() || "—"}</span>` },
+        { title: "Score",   field: "bullish_score",    sorter: "number", hozAlign: "right", width: 80,
+          formatter: (cell) => `<b>${fmt(cell.getValue(), 3)}</b>` },
+        { title: "Streak",  field: "current_streak",   sorter: "number", hozAlign: "right", width: 115,
+          formatter: streakFmt },
+        { title: "CAGR%",  field: "cagr_pct",          sorter: "number", hozAlign: "right", width: 80,
+          formatter: (cell) => fmt(cell.getValue(), 1) },
+        { title: "MaxDD%", field: "max_drawdown_pct",  sorter: "number", hozAlign: "right", width: 90,
+          formatter: (cell) => fmt(cell.getValue(), 1) },
+        { title: "↑/↓",    field: "swings",            sorter: "number", hozAlign: "right", width: 70,
+          formatter: (cell) => { const r = cell.getRow().getData(); return `${r.n_up}/${r.n_down}`; } },
+      ],
+      rowFormatter: (row) => {
+        if (row.getData().ticker === HIGHLIGHT) {
+          const el = row.getElement();
+          el.style.background = "var(--accent-light,#e0f2fe)";
+          el.style.borderLeft = "3px solid var(--accent,#0284c7)";
         }
-        renderTable(el, results);
-      });
+      },
     });
   }
 
+  function wireFilters() {
+    function applyFilters() {
+      if (!tabulatorInstance) return;
+      const filters = [];
+      const ticker = document.getElementById("f-ticker")?.value.trim();
+      if (ticker) filters.push({ field: "ticker", type: "like", value: ticker });
+
+      const rankMax = document.getElementById("f-rank-max")?.value;
+      if (rankMax !== "") filters.push({ field: "rank", type: "<=", value: +rankMax });
+
+      const scoreMin = document.getElementById("f-score-min")?.value;
+      if (scoreMin !== "") filters.push({ field: "bullish_score", type: ">=", value: +scoreMin });
+
+      const cagrMin = document.getElementById("f-cagr-min")?.value;
+      if (cagrMin !== "") filters.push({ field: "cagr_pct", type: ">=", value: +cagrMin });
+      const cagrMax = document.getElementById("f-cagr-max")?.value;
+      if (cagrMax !== "") filters.push({ field: "cagr_pct", type: "<=", value: +cagrMax });
+
+      const ddMin = document.getElementById("f-dd-min")?.value;
+      if (ddMin !== "") filters.push({ field: "max_drawdown_pct", type: ">=", value: +ddMin });
+      const ddMax = document.getElementById("f-dd-max")?.value;
+      if (ddMax !== "") filters.push({ field: "max_drawdown_pct", type: "<=", value: +ddMax });
+
+      tabulatorInstance.setFilter(filters);
+    }
+
+    document.querySelectorAll("#tb-filters input").forEach(inp => inp.addEventListener("input", applyFilters));
+    document.getElementById("f-reset")?.addEventListener("click", () => {
+      document.querySelectorAll("#tb-filters input").forEach(inp => inp.value = "");
+      tabulatorInstance?.clearFilter();
+    });
+  }
+
+  // ---- Bootstrap ----
   function render() {
     const scatterEl = document.getElementById("bullish-scatter");
-    const tableEl = document.getElementById("bullish-table");
-    const metaEl = document.getElementById("bullish-meta");
-    if (!scatterEl || typeof Plotly === "undefined") return;
+    const tableEl   = document.getElementById("bullish-table");
+    const metaEl    = document.getElementById("bullish-meta");
+    if (!scatterEl || typeof Plotly === "undefined" || typeof Tabulator === "undefined") return;
 
     fetch(`${dataBase()}/bullish_screen.json`, { cache: "no-store" })
-      .then((resp) => {
-        if (!resp.ok) throw new Error("HTTP " + resp.status);
-        return resp.json();
-      })
-      .then((data) => {
+      .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(data => {
         const results = data.results || [];
-        const when = new Date(data.generated_at).toLocaleString();
         if (metaEl) {
           metaEl.innerHTML =
             `Screened <b>${data.universe_size}</b> tickers @ ±${data.threshold_pct}% ` +
             `over ${data.lookback_years}y — <b>${results.length}</b> eligible. ` +
-            `<small>Generated ${when}.</small>`;
+            `<small>Generated ${new Date(data.generated_at).toLocaleString()}.</small>`;
         }
         renderScatter(scatterEl, results);
-        renderTable(tableEl, results);
+        buildTable(tableEl, results);
+        wireFilters();
+        const rerender = () => renderScatter(scatterEl, results);
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", rerender);
+        window.addEventListener("themechange", rerender);
       })
-      .catch((err) => {
-        if (metaEl) {
-          metaEl.innerHTML =
-            `<span style="color:red;">Could not load bullish_screen.json (${err}). ` +
-            "Run <code>python3 screen_bullish.py</code> to generate it.</span>";
-        }
+      .catch(err => {
+        if (metaEl) metaEl.innerHTML =
+          `<span style="color:var(--down,#c2410c);">Could not load bullish_screen.json (${err}). ` +
+          "Run <code>python3 screen_bullish.py</code> to generate it.</span>";
       });
   }
 
-  if (document.readyState !== "loading") {
-    render();
-  } else {
-    document.addEventListener("DOMContentLoaded", render);
-  }
+  if (document.readyState !== "loading") render();
+  else document.addEventListener("DOMContentLoaded", render);
 })();

@@ -87,6 +87,40 @@
     return streaks;
   }
 
+  function findUpStreaks(events, minRun) {
+    const rows = events.filter((e) => e.dir === "up" || e.dir === "down");
+    const streaks = [];
+    let i = 0;
+    while (i < rows.length) {
+      if (rows[i].dir === "up") {
+        let j = i;
+        while (j < rows.length && rows[j].dir === "up") j++;
+        const runLen = j - i;
+        if (runLen >= minRun) {
+          const startEvt = i === 0 ? events[0] : rows[i - 1];
+          const endEvt = rows[j - 1];
+          const days =
+            (Date.parse(endEvt.d) - Date.parse(startEvt.d)) /
+            (1000 * 60 * 60 * 24);
+          const gain = ((endEvt.c - startEvt.c) / startEvt.c) * 100;
+          streaks.push({
+            start_date: startEvt.d,
+            start_price: startEvt.c,
+            end_date: endEvt.d,
+            end_price: endEvt.c,
+            runs: runLen,
+            days: Math.round(days),
+            gain_pct: gain,
+          });
+        }
+        i = j;
+      } else {
+        i++;
+      }
+    }
+    return streaks;
+  }
+
   // ---------- Rendering ----------
   function buildTraces(prices, events) {
     const traces = [
@@ -145,11 +179,12 @@
     return traces;
   }
 
-  function render(payload, thresholdPct, minStreak) {
+  function render(payload, thresholdPct, minDownStreak, minUpStreak) {
     const events = detectEvents(payload.prices, thresholdPct);
     const ups = events.filter((e) => e.dir === "up").length;
     const downs = events.filter((e) => e.dir === "down").length;
-    const streaks = findDownStreaks(events, minStreak);
+    const downStreaks = findDownStreaks(events, minDownStreak);
+    const upStreaks = findUpStreaks(events, minUpStreak);
 
     const statsEl = document.getElementById("sma-stats");
     const fmtDate = (d) =>
@@ -162,28 +197,34 @@
       <div class="sma-stat"><span class="lbl">Trading days</span><span class="val">${payload.prices.length.toLocaleString()}</span></div>
       <div class="sma-stat"><span class="lbl">+${thresholdPct}% triggers</span><span class="val up">${ups}</span></div>
       <div class="sma-stat"><span class="lbl">-${thresholdPct}% triggers</span><span class="val down">${downs}</span></div>
-      <div class="sma-stat"><span class="lbl">Down-streaks (≥${minStreak})</span><span class="val">${streaks.length}</span></div>
+      <div class="sma-stat"><span class="lbl">Up-streaks (≥${minUpStreak})</span><span class="val up">${upStreaks.length}</span></div>
+      <div class="sma-stat"><span class="lbl">Down-streaks (≥${minDownStreak})</span><span class="val down">${downStreaks.length}</span></div>
     `;
 
     const traces = buildTraces(payload.prices, events);
-    const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const cs = getComputedStyle(document.documentElement);
+    const clrBg     = cs.getPropertyValue("--bg").trim()     || "#f7fafc";
+    const clrBgCard = cs.getPropertyValue("--bg-card").trim()|| "#ffffff";
+    const clrFg     = cs.getPropertyValue("--fg").trim()     || "#2d3748";
+    const clrBorder = cs.getPropertyValue("--border").trim() || "#cbd5e0";
     const layout = {
       title: {
         text: `${payload.ticker} — ±${thresholdPct}% moving-anchor events`,
-        font: { size: 16 },
+        font: { size: 16, color: clrFg },
       },
       margin: { l: 60, r: 20, t: 60, b: 50 },
       hovermode: "closest",
-      xaxis: { title: "Date", showgrid: true, gridcolor: isDark ? "#374151" : "#e5e7eb" },
+      xaxis: { title: "Date", showgrid: true, gridcolor: clrBorder, color: clrFg },
       yaxis: {
         title: "Adjusted close (USD)",
         showgrid: true,
-        gridcolor: isDark ? "#374151" : "#e5e7eb",
+        gridcolor: clrBorder,
+        color: clrFg,
       },
-      legend: { orientation: "h", y: -0.18 },
-      plot_bgcolor: isDark ? "#1e1e2e" : "white",
-      paper_bgcolor: isDark ? "#1e1e2e" : "white",
-      font: isDark ? { color: "#e5e7eb" } : {},
+      legend: { orientation: "h", y: -0.18, font: { color: clrFg } },
+      plot_bgcolor: clrBgCard,
+      paper_bgcolor: clrBg,
+      font: { color: clrFg },
     };
 
     Plotly.newPlot("sma-chart", traces, layout, {
@@ -191,11 +232,42 @@
       displaylogo: false,
     });
 
-    const tblEl = document.getElementById("sma-streaks");
-    if (!streaks.length) {
-      tblEl.innerHTML = `<p class="sma-empty">No down-streaks of ≥${minStreak} consecutive –${thresholdPct}% drops in this range.</p>`;
+    const upTblEl = document.getElementById("sma-up-streaks");
+    if (!upStreaks.length) {
+      upTblEl.innerHTML = `<p class="sma-empty">No up-streaks of ≥${minUpStreak} consecutive +${thresholdPct}% gains in this range.</p>`;
     } else {
-      tblEl.innerHTML = `
+      upTblEl.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Start</th><th>End</th><th>Triggers</th>
+              <th>Duration</th><th>Gain</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${upStreaks
+              .map(
+                (s, i) => `
+              <tr>
+                <td>${i + 1}</td>
+                <td>${fmtDate(s.start_date)}<br><small>$${s.start_price.toFixed(2)}</small></td>
+                <td>${fmtDate(s.end_date)}<br><small>$${s.end_price.toFixed(2)}</small></td>
+                <td>${s.runs}</td>
+                <td>${s.days} days</td>
+                <td class="up">+${s.gain_pct.toFixed(1)}%</td>
+              </tr>`,
+              )
+              .join("")}
+          </tbody>
+        </table>
+      `;
+    }
+
+    const downTblEl = document.getElementById("sma-streaks");
+    if (!downStreaks.length) {
+      downTblEl.innerHTML = `<p class="sma-empty">No down-streaks of ≥${minDownStreak} consecutive –${thresholdPct}% drops in this range.</p>`;
+    } else {
+      downTblEl.innerHTML = `
         <table>
           <thead>
             <tr>
@@ -204,7 +276,7 @@
             </tr>
           </thead>
           <tbody>
-            ${streaks
+            ${downStreaks
               .map(
                 (s, i) => `
               <tr>
@@ -233,6 +305,8 @@
     const thresholdLabel = document.getElementById("sma-threshold-label");
     const minStreakInput = document.getElementById("sma-minstreak");
     const minStreakLabel = document.getElementById("sma-minstreak-label");
+    const minUpStreakInput = document.getElementById("sma-minupstreak");
+    const minUpStreakLabel = document.getElementById("sma-minupstreak-label");
     const updatedEl = document.getElementById("sma-updated");
 
     let manifest;
@@ -267,12 +341,14 @@
       const ticker = tickerSelect.value;
       const threshold = parseFloat(thresholdInput.value);
       const minStreak = parseInt(minStreakInput.value, 10);
+      const minUpStreak = parseInt(minUpStreakInput.value, 10);
       thresholdLabel.textContent = `${threshold}%`;
       minStreakLabel.textContent = minStreak;
+      minUpStreakLabel.textContent = minUpStreak;
 
       try {
         const payload = await loadTicker(ticker);
-        render(payload, threshold, minStreak);
+        render(payload, threshold, minStreak, minUpStreak);
       } catch (e) {
         chartEl.innerHTML = `<p class="sma-error">${e.message}</p>`;
       }
@@ -281,8 +357,10 @@
     tickerSelect.addEventListener("change", update);
     thresholdInput.addEventListener("input", update);
     minStreakInput.addEventListener("input", update);
+    minUpStreakInput.addEventListener("input", update);
 
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => update());
+    window.addEventListener("themechange", () => update());
 
     await update();
   }

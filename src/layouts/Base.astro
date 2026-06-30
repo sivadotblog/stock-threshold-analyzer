@@ -10,6 +10,16 @@ const dataBase = base + '/data';
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{title} — Stock Threshold Analyzer</title>
+  <slot name="head" />
+  <!-- Apply saved theme before first paint to avoid flash -->
+  <script is:inline>
+    (function () {
+      var saved = localStorage.getItem("theme");
+      if (saved === "dark" || saved === "light") {
+        document.documentElement.setAttribute("data-theme", saved);
+      }
+    })();
+  </script>
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" is:inline></script>
   <script define:vars={{ dataBase }}>
     window.__DATA_BASE__ = dataBase;
@@ -22,9 +32,43 @@ const dataBase = base + '/data';
       <a href={`${base}/`}>Leaderboard</a>
       <a href={`${base}/chart/`}>Chart</a>
     </nav>
+    <button id="theme-toggle" aria-label="Toggle dark/light mode" title="Toggle dark/light mode">
+      <span id="theme-icon">☀</span>
+    </button>
   </header>
   <main>
     <slot />
   </main>
+  <script is:inline>
+    (function () {
+      var btn  = document.getElementById("theme-toggle");
+      var icon = document.getElementById("theme-icon");
+
+      function isDark() {
+        var attr = document.documentElement.getAttribute("data-theme");
+        if (attr === "dark") return true;
+        if (attr === "light") return false;
+        return window.matchMedia("(prefers-color-scheme: dark)").matches;
+      }
+
+      function syncIcon() {
+        icon.textContent = isDark() ? "☀" : "☾";
+        icon.title = isDark() ? "Switch to light mode" : "Switch to dark mode";
+      }
+
+      syncIcon();
+
+      btn.addEventListener("click", function () {
+        var next = isDark() ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", next);
+        localStorage.setItem("theme", next);
+        syncIcon();
+        // Let Plotly charts re-render if they expose a refresh hook
+        window.dispatchEvent(new CustomEvent("themechange"));
+      });
+
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncIcon);
+    })();
+  </script>
 </body>
 </html>

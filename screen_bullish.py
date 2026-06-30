@@ -125,6 +125,7 @@ def main() -> int:
                 "n_up": r["n_up"],
                 "n_down": r["n_down"],
                 "current_streak": r["current_streak"],
+                "last_event_date": r["last_event_date"],
                 "mean_amplitude": r["mean_amplitude"],
             }
             for rank, r in enumerate(rows, 1)

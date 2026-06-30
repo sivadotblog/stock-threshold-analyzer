@@ -270,6 +270,7 @@ def compute_bullish_oscillation(prices: pd.DataFrame,
         "n_down": 0,
         "n_events": 0,
         "current_streak": 0,
+        "last_event_date": None,
         "window_coverage": 0.0,
         "mean_amplitude": 0.0,
         "net_return_pct": 0.0,
@@ -302,6 +303,12 @@ def compute_bullish_oscillation(prices: pd.DataFrame,
             else:
                 break
         out["current_streak"] = streak if last_dir == "up" else -streak
+        last_date = ev["date"].iloc[-1]
+        out["last_event_date"] = (
+            last_date.strftime("%Y-%m-%d")
+            if hasattr(last_date, "strftime")
+            else str(last_date)[:10]
+        )
 
     close = prices["close"].to_numpy(dtype=float)
     net_return = float((close[-1] - close[0]) / close[0])

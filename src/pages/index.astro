@@ -3,6 +3,10 @@ import Base from '../layouts/Base.astro';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 <Base title="Leaderboard">
+  <Fragment slot="head">
+    <link rel="stylesheet" href="https://unpkg.com/tabulator-tables@6.3.0/dist/css/tabulator_simple.min.css" />
+  </Fragment>
+
   <h1>Bullish Oscillators — "Stocks like ZETA"</h1>
   <p>
     Stocks that <strong>net-trend up</strong> while swinging ±10% up and down repeatedly.
@@ -15,6 +19,42 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   <p id="bullish-meta"><em>Loading screen…</em></p>
 
   <div id="bullish-scatter" style="min-height:520px;"></div>
+
+  <h2>Leaderboard</h2>
+
+  <div id="tb-filters" class="tb-filter-bar">
+    <div class="tb-filter-group">
+      <label for="f-ticker">Ticker</label>
+      <input type="text" id="f-ticker" placeholder="e.g. RKLB" autocomplete="off" />
+    </div>
+    <div class="tb-filter-group">
+      <label for="f-rank-max">Rank ≤</label>
+      <input type="number" id="f-rank-max" placeholder="e.g. 100" min="1" />
+    </div>
+    <div class="tb-filter-group">
+      <label for="f-score-min">Score ≥</label>
+      <input type="number" id="f-score-min" placeholder="e.g. 0.5" step="0.01" min="0" max="1" />
+    </div>
+    <div class="tb-filter-group">
+      <label>CAGR%</label>
+      <div class="tb-filter-range">
+        <input type="number" id="f-cagr-min" placeholder="min" />
+        <span>–</span>
+        <input type="number" id="f-cagr-max" placeholder="max" />
+      </div>
+    </div>
+    <div class="tb-filter-group">
+      <label>MaxDD%</label>
+      <div class="tb-filter-range">
+        <input type="number" id="f-dd-min" placeholder="e.g. −90" />
+        <span>–</span>
+        <input type="number" id="f-dd-max" placeholder="e.g. −20" />
+      </div>
+    </div>
+    <div class="tb-filter-group tb-filter-group--btn">
+      <button id="f-reset">Reset</button>
+    </div>
+  </div>
 
   <div id="bullish-table"></div>
 
@@ -29,7 +69,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         </tr>
         <tr>
           <td><strong>Streak</strong></td>
-          <td>Current momentum. How many consecutive ±10% threshold crossings have gone the same direction. <code>+3↑</code> = the last 3 events were all up legs. <code>-2↓</code> = last 2 were down legs.</td>
+          <td>Current momentum. How many consecutive ±10% threshold crossings have gone the same direction. <code>+3↑</code> = the last 3 events were all up legs. <code>-2↓</code> = last 2 were down legs. A pill badge shows if the streak changed today.</td>
         </tr>
         <tr>
           <td><strong>CAGR%</strong></td>
@@ -47,5 +87,6 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     </table>
   </div>
 
+  <script is:inline src="https://unpkg.com/tabulator-tables@6.3.0/dist/js/tabulator.min.js"></script>
   <script is:inline src={`${base}/js/bullish-screen.js`}></script>
 </Base>
