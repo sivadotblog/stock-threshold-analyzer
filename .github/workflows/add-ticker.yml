@@ -46,6 +46,18 @@ jobs:
           git commit -m "feat(config): add ${{ steps.parse.outputs.ticker }} via issue #${{ github.event.issue.number }}"
           git push
 
+      - name: Trigger site rebuild
+        if: steps.validate.outputs.added == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'refresh_sma_data.yml',
+              ref: 'main',
+            });
+
       - name: Comment success
         if: steps.validate.outputs.added == 'true'
         uses: actions/github-script@v7
