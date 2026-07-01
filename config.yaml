@@ -636,6 +636,7 @@ universe:
     - OSCR
 
     - BE
+    - CRWV
   # Leveraged ETFs — broad market (3x bull)
   leveraged_4x_broad:
     - XXXX # MAX S&P 500 4X Leveraged ETN
