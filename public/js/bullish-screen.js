@@ -3,10 +3,6 @@
   "use strict";
 
   const HIGHLIGHT = "ZETA";
-  const TODAY = (() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-  })();
 
   function dataBase() {
     return window.__DATA_BASE__ || "/stock-threshold-analyzer/data";
@@ -92,16 +88,26 @@
     results.forEach(r => { r.swings = r.n_up + r.n_down; });
 
     const streakFmt = (cell) => {
-      const r = cell.getRow().getData();
-      const s = r.current_streak || 0;
+      const s = cell.getValue() || 0;
       const color = s > 0 ? "var(--up,#0369a1)" : s < 0 ? "var(--down,#c2410c)" : "inherit";
-      let html = `<span style="color:${color};font-weight:700;">${streakLabel(s)}</span>`;
-      if (r.last_event_date === TODAY) {
-        const sign = s >= 0 ? "+1↑" : "-1↓";
-        const bg   = s >= 0 ? "var(--up-bg,#e0f2fe)" : "var(--down-bg,#fff7ed)";
-        html += `<span style="margin-left:5px;font-size:0.75em;font-weight:700;padding:2px 6px;border-radius:20px;background:${bg};color:${color};">${sign}</span>`;
-      }
-      return html;
+      return `<span style="color:${color};font-weight:700;">${streakLabel(s)}</span>`;
+    };
+
+    // recent_events: 3 calendar-day slots (oldest -> newest/"today") baked in
+    // server-side, so a change stays visible through a weekend instead of
+    // depending on the viewer's clock matching the last data-refresh date.
+    const recentEventsFmt = (cell) => {
+      const events = cell.getValue() || [];
+      return events.map(ev => {
+        if (!ev.direction) {
+          return `<span style="opacity:0.35;">—</span>`;
+        }
+        const up  = ev.direction === "up";
+        const sign  = up ? "+1↑" : "-1↓";
+        const color = up ? "var(--up,#0369a1)" : "var(--down,#c2410c)";
+        const bg    = up ? "var(--up-bg,#e0f2fe)" : "var(--down-bg,#fff7ed)";
+        return `<span title="${ev.date}" style="font-size:0.75em;font-weight:700;padding:2px 6px;border-radius:20px;background:${bg};color:${color};">${sign}</span>`;
+      }).join(" ");
     };
 
     tabulatorInstance = new Tabulator(el, {
@@ -126,6 +132,8 @@
           formatter: (cell) => `<b>${fmt(cell.getValue(), 3)}</b>` },
         { title: "Streak",  field: "current_streak",   sorter: "number", hozAlign: "right", width: 115,
           formatter: streakFmt },
+        { title: "Recent Δ", field: "recent_events",   hozAlign: "center", width: 150,
+          formatter: recentEventsFmt },
         { title: "CAGR%",  field: "cagr_pct",          sorter: "number", hozAlign: "right", width: 80,
           formatter: (cell) => fmt(cell.getValue(), 1) },
         { title: "MaxDD%", field: "max_drawdown_pct",  sorter: "number", hozAlign: "right", width: 90,

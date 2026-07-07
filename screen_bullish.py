@@ -73,12 +73,14 @@ def main() -> int:
 
     rows = []
     gated = 0
+    as_of = datetime.now(timezone.utc).date()
     for i, ticker in enumerate(tickers, 1):
         prices = load_cached_prices(ticker, years=args.years,
                                     max_age_days=args.max_age_days)
         if prices is None or len(prices) < 50:
             continue
-        r = compute_bullish_oscillation(prices, threshold_pct=args.threshold)
+        r = compute_bullish_oscillation(prices, threshold_pct=args.threshold,
+                                        as_of=as_of)
         r["ticker"] = ticker
         if r["gated"]:
             gated += 1
@@ -126,6 +128,7 @@ def main() -> int:
                 "n_down": r["n_down"],
                 "current_streak": r["current_streak"],
                 "last_event_date": r["last_event_date"],
+                "recent_events": r["recent_events"],
                 "mean_amplitude": r["mean_amplitude"],
             }
             for rank, r in enumerate(rows, 1)

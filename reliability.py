@@ -12,6 +12,7 @@ be calibrated in one place before scaling to a large universe.
 from __future__ import annotations
 
 import math
+from datetime import date, datetime, timedelta, timezone
 
 import numpy as np
 import pandas as pd
@@ -236,7 +237,8 @@ def _cagr_and_max_drawdown(close: np.ndarray, span_days: int) -> tuple[float, fl
 
 
 def compute_bullish_oscillation(prices: pd.DataFrame,
-                                threshold_pct: float = 10.0) -> dict:
+                                threshold_pct: float = 10.0,
+                                as_of: date | None = None) -> dict:
     """
     Score how much a ticker oscillates *like ZETA*: a BULLISH oscillator that
     net-trends **up** while swinging +/-N% up and down repeatedly.
@@ -252,6 +254,12 @@ def compute_bullish_oscillation(prices: pd.DataFrame,
     ``bullish_score = activity * trend`` (either axis can veto). ZETA, the
     archetype, scores near the top; crashers that swing but bleed down score low;
     flat oscillators land in the middle.
+
+    ``recent_events`` reports, for each of the 3 calendar days ending at
+    ``as_of`` (default: today, UTC), whether a threshold-crossing event
+    happened that day and in which direction -- oldest first. This is a
+    fixed calendar window (not "last 3 events"), so a Friday event stays
+    visible in its slot through Saturday and Sunday.
 
     Returns the composite plus every axis and the diagnostics (regularity,
     amplitude_consistency, balance, cagr, max_drawdown, ...). ``gated`` / number
@@ -271,6 +279,7 @@ def compute_bullish_oscillation(prices: pd.DataFrame,
         "n_events": 0,
         "current_streak": 0,
         "last_event_date": None,
+        "recent_events": [],
         "window_coverage": 0.0,
         "mean_amplitude": 0.0,
         "net_return_pct": 0.0,
@@ -279,6 +288,7 @@ def compute_bullish_oscillation(prices: pd.DataFrame,
         "gated": True,
         "gate_reason": "",
     }
+    as_of = as_of or datetime.now(timezone.utc).date()
 
     if prices is None or len(prices) < 2:
         out["gate_reason"] = "insufficient price history"
@@ -310,6 +320,17 @@ def compute_bullish_oscillation(prices: pd.DataFrame,
             if hasattr(last_date, "strftime")
             else str(last_date)[:10]
         )
+
+    event_dates = ev["date"].dt.strftime("%Y-%m-%d")
+    recent_events = []
+    for offset in (2, 1, 0):
+        day_str = (as_of - timedelta(days=offset)).strftime("%Y-%m-%d")
+        matches = ev.loc[event_dates == day_str, "direction"]
+        recent_events.append({
+            "date": day_str,
+            "direction": matches.iloc[-1] if len(matches) else None,
+        })
+    out["recent_events"] = recent_events
 
     close = prices["close"].to_numpy(dtype=float)
     net_return = float((close[-1] - close[0]) / close[0])

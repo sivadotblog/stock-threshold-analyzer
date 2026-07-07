@@ -76,7 +76,11 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         </tr>
         <tr>
           <td><strong>Streak</strong></td>
-          <td>Current momentum. How many consecutive ±10% threshold crossings have gone the same direction. <code>+3↑</code> = the last 3 events were all up legs. <code>-2↓</code> = last 2 were down legs. A pill badge shows if the streak changed today.</td>
+          <td>Current momentum. How many consecutive ±10% threshold crossings have gone the same direction. <code>+3↑</code> = the last 3 events were all up legs. <code>-2↓</code> = last 2 were down legs.</td>
+        </tr>
+        <tr>
+          <td><strong>Recent Δ</strong></td>
+          <td>The last 3 calendar days, oldest to newest. A pill badge marks a day the streak changed (<code>+1↑</code> up, <code>-1↓</code> down); <code>—</code> means no change that day. Kept as a 3-day window so a Friday change stays visible through the weekend instead of vanishing once the calendar date moves on.</td>
         </tr>
         <tr>
           <td><strong>CAGR%</strong></td>
