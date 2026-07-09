@@ -80,7 +80,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         </tr>
         <tr>
           <td><strong>Recent Δ</strong></td>
-          <td>The last 3 calendar days, oldest to newest. A pill badge marks a day the streak changed (<code>+1↑</code> up, <code>-1↓</code> down); <code>—</code> means no change that day. Kept as a 3-day window so a Friday change stays visible through the weekend instead of vanishing once the calendar date moves on.</td>
+          <td>Every ±10% threshold crossing in the last 30 days, oldest to newest — e.g. <code>-1↓ -1↓ +1↑</code> for two down-legs then an up-leg. Based on the actual sequence of events, not calendar days, so it isn't affected by weekends/holidays and naturally shows more badges for an active stock and fewer for a quiet one.</td>
         </tr>
         <tr>
           <td><strong>CAGR%</strong></td>

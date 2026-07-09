@@ -27,7 +27,7 @@ from pathlib import Path
 import yaml
 
 from price_cache import load_cached_prices
-from reliability import compute_bullish_oscillation
+from reliability import DEFAULT_RECENT_WINDOW_DAYS, compute_bullish_oscillation
 
 _CONFIG = yaml.safe_load((Path(__file__).parent / "config.yaml").read_text())
 _SCREEN = _CONFIG["screen"]
@@ -112,6 +112,7 @@ def main() -> int:
                         "swinging +/-N% both ways. Ranked by bullish_score."),
         "threshold_pct": args.threshold,
         "lookback_years": args.years,
+        "recent_window_days": DEFAULT_RECENT_WINDOW_DAYS,
         "universe_size": len(tickers),
         "results": [
             {

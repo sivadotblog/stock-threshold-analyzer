@@ -93,15 +93,15 @@
       return `<span style="color:${color};font-weight:700;">${streakLabel(s)}</span>`;
     };
 
-    // recent_events: 3 calendar-day slots (oldest -> newest/"today") baked in
-    // server-side, so a change stays visible through a weekend instead of
-    // depending on the viewer's clock matching the last data-refresh date.
+    // recent_events: every threshold-crossing event in the last N days
+    // (oldest -> newest), regardless of which calendar day it landed on --
+    // e.g. two down-legs then an up-leg renders as -1↓ -1↓ +1↑.
     const recentEventsFmt = (cell) => {
       const events = cell.getValue() || [];
+      if (!events.length) {
+        return `<span style="opacity:0.35;">—</span>`;
+      }
       return events.map(ev => {
-        if (!ev.direction) {
-          return `<span style="opacity:0.35;">—</span>`;
-        }
         const up  = ev.direction === "up";
         const sign  = up ? "+1↑" : "-1↓";
         const color = up ? "var(--up,#0369a1)" : "var(--down,#c2410c)";
