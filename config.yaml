@@ -16,6 +16,47 @@ screen:
   top: 25
 
 # ---------------------------------------------------------------------------
+# v2 predictive pipeline (events -> metrics -> validate -> backtest -> signals).
+# Single source of truth for every tunable; no magic constants in code.
+# ---------------------------------------------------------------------------
+v2:
+  thresholds_pct: [10.0]        # -N% trigger sizes analyzed / reported
+  window_years: 5               # trailing metric window W
+  low_sample_min_events: 10     # below this, rows get the soft `low_sample` flag
+  # Leveraged ETFs are excluded from the default universe: volatility decay makes
+  # their event statistics non-comparable. Flip to true to include them anyway.
+  include_leveraged: false
+
+  validation:
+    min_events_per_half: 5      # ticker needs >= this many down events in BOTH halves
+    rho_pass: 0.30              # split-half Spearman rho for PASS
+    p_pass: 0.05
+    rho_weak: 0.15              # anything between weak and pass thresholds -> WEAK
+    rolling_step_months: 3      # rolling variant: quarterly steps
+    rolling_train_years: 2.5    # trailing metrics window
+    rolling_test_years: 1.0     # subsequent realized window
+    rolling_min_steps: 4        # need at least this many rolling steps to judge stability
+    permutations: 10000         # permutation count for Spearman p-value
+    seed: 42                    # determinism: seeds the permutation test
+
+  backtest:
+    top_k: 10                   # watchlist size at each rebalance
+    max_positions: 5            # concurrent position slots (equal-weight)
+    rebalance: monthly
+    stop_mae_mult: 1.5          # hard stop = mult x median MAE below entry trigger
+    max_hold_days: 30           # calendar-day time stop
+    cost_bps_per_side: 10       # slippage + spread, per side
+    commission_per_trade: 0.0
+    tax_rate_short_term: 0.35   # applied annually to net realized gains
+    starting_cash: 100000
+    benchmark: SPY
+    min_events_asof: 3          # ticker needs >= this many resolved events as-of to be rankable
+    sensitivity:                # small grid; one good cell with bad neighbors = overfit
+      thresholds_pct: [7.5, 10.0, 12.5]
+      stop_mae_mult: [1.25, 1.5, 2.0]
+      max_hold_days: [20, 30, 45]
+
+# ---------------------------------------------------------------------------
 # Screening universe for screen_bullish.py.
 # sp500 + supplement are merged (deduped) at runtime.
 # ---------------------------------------------------------------------------

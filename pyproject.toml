@@ -9,5 +9,9 @@ dependencies = [
     "yfinance>=0.2.40",
     "pyyaml>=6.0",
     "pandas-ta>=0.3.14",
-    "Backtesting>=0.3.3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
 ]

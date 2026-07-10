@@ -7,16 +7,19 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     <link rel="stylesheet" href="https://unpkg.com/tabulator-tables@6.3.0/dist/css/tabulator_simple.min.css" />
   </Fragment>
 
-  <h1>Bullish Oscillators — "Stocks like ZETA"</h1>
+  <h1>Dip-Buy Leaderboard — bounce reliability at −10%</h1>
   <p>
-    Stocks that <strong>net-trend up</strong> while swinging ±10% up and down repeatedly.
-    Ranked by <code>bullish_score</code> (= oscillation <strong>activity</strong> × signed
-    <strong>trend</strong>). Each dot is a stock; the <strong>top-right</strong> — strong
-    uptrend <em>and</em> many two-sided swings — is the most ZETA-like.
-    <strong>ZETA</strong> is highlighted as the archetype.
+    Given a <strong>−10% trigger</strong>, how reliably — and how fast — has each ticker
+    recovered <strong>+10%</strong> before triggering another −10%? Ranked by the
+    <strong>95% Wilson lower bound</strong> of the historical bounce rate, so thin samples
+    are penalized automatically. This is a <em>base-rate display, not a prediction</em>:
+    whether the ranking predicts anything at all is tested out-of-sample and reported in
+    the banner below.
   </p>
 
   <p id="bullish-meta"><em>Loading screen…</em></p>
+
+  <div id="validation-banner"></div>
 
   <div id="bullish-scatter" style="min-height:520px;"></div>
 
@@ -39,8 +42,12 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       <input type="number" id="f-rank-max" placeholder="e.g. 100" min="1" />
     </div>
     <div class="tb-filter-group">
-      <label for="f-score-min">Score ≥</label>
-      <input type="number" id="f-score-min" placeholder="e.g. 0.5" step="0.01" min="0" max="1" />
+      <label for="f-wilson-min">Wilson low ≥</label>
+      <input type="number" id="f-wilson-min" placeholder="e.g. 0.5" step="0.01" min="0" max="1" />
+    </div>
+    <div class="tb-filter-group">
+      <label for="f-n-min">n events ≥</label>
+      <input type="number" id="f-n-min" placeholder="e.g. 10" min="0" />
     </div>
     <div class="tb-filter-group">
       <label>CAGR%</label>
@@ -48,14 +55,6 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         <input type="number" id="f-cagr-min" placeholder="min" />
         <span>–</span>
         <input type="number" id="f-cagr-max" placeholder="max" />
-      </div>
-    </div>
-    <div class="tb-filter-group">
-      <label>MaxDD%</label>
-      <div class="tb-filter-range">
-        <input type="number" id="f-dd-min" placeholder="e.g. −90" />
-        <span>–</span>
-        <input type="number" id="f-dd-max" placeholder="e.g. −20" />
       </div>
     </div>
     <div class="tb-filter-group tb-filter-group--btn">
@@ -71,8 +70,51 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       <thead><tr><th>Field</th><th>What it means</th></tr></thead>
       <tbody>
         <tr>
-          <td><strong>Score</strong></td>
-          <td>Composite 0–1 rating: how much this stock behaves like ZETA. Combines how often it swings ±10% <em>and</em> whether those swings are net upward. 1.0 = perfect bullish oscillator, 0 = doesn't qualify.</td>
+          <td><strong>Signal</strong></td>
+          <td>Current §5.5 state: <code>BUY_SETUP</code> (fresh −10% trigger on a top-K
+          ticker, actionable at the <em>next open</em> — never same-day),
+          <code>IN_TRADE</code>, <code>SELL_*</code> (mechanical exits), or
+          <code>SUPPRESSED</code> (a signal would exist, but validation is WEAK/FAILED or
+          the sample is too thin — greyed reason in the tooltip, never actionable).
+          Hover a badge for trigger price, stop level, time-stop date and the historical
+          base rate behind it.</td>
+        </tr>
+        <tr>
+          <td><strong>Wilson low</strong></td>
+          <td>The ranking key: lower bound of the 95% Wilson confidence interval on the
+          bounce rate. A ticker that bounced 5/5 ranks <em>below</em> one that bounced
+          40/52 — small samples get less credit, replacing any hard eligibility cutoff.</td>
+        </tr>
+        <tr>
+          <td><strong>Bounce rate</strong></td>
+          <td>Of the −10% triggers that resolved, the fraction whose <em>next</em> event
+          was the +10% recovery (a bounce) rather than another −10% drop (a
+          continuation), shown with the raw counts. Unresolved (censored) triggers are
+          excluded from the rate but counted in <strong>Cens</strong> — a ticker whose
+          last dip never resolved is important information.</td>
+        </tr>
+        <tr>
+          <td><strong>n▼ / Cens</strong></td>
+          <td>Number of −10% down-triggers in the 5-year window (the denominator — never
+          hidden), and how many of them are still unresolved. ⚠️ marks
+          <code>low_sample</code> rows (&lt;10 down events).</td>
+        </tr>
+        <tr>
+          <td><strong>Med / p90 days</strong></td>
+          <td>Median and 90th-percentile calendar days from a −10% trigger to its +10%
+          recovery, over bounce-resolved events. p90 is the tail risk of capital being
+          stuck.</td>
+        </tr>
+        <tr>
+          <td><strong>Med / Worst MAE%</strong></td>
+          <td>Max adverse excursion: how much further the price fell beyond the trigger
+          before resolving. Expect a typical entry to get about the median MAE worse
+          before it recovers; the stop is sized from this.</td>
+        </tr>
+        <tr>
+          <td><strong>Expect%</strong></td>
+          <td>Mean signed return per resolved trigger (bounces contribute ~+10%,
+          continuations ~−10%), before costs.</td>
         </tr>
         <tr>
           <td><strong>Streak</strong></td>
@@ -83,16 +125,11 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
           <td>Every ±10% threshold crossing in the last 30 days, oldest to newest — e.g. <code>-1↓ -1↓ +1↑</code> for two down-legs then an up-leg. Based on the actual sequence of events, not calendar days, so it isn't affected by weekends/holidays and naturally shows more badges for an active stock and fewer for a quiet one.</td>
         </tr>
         <tr>
-          <td><strong>CAGR%</strong></td>
-          <td>Compound Annual Growth Rate — the annualized return over the 5-year lookback. 20% means the stock roughly doubled every ~3.5 years on average.</td>
-        </tr>
-        <tr>
-          <td><strong>MaxDD%</strong></td>
-          <td>Maximum Drawdown — the worst peak-to-trough drop over the 5 years. High scores often come with brutal drawdowns because volatile stocks swing hard in both directions.</td>
-        </tr>
-        <tr>
-          <td><strong>↑/↓</strong></td>
-          <td>Raw count of up-legs / down-legs. A balanced ratio means it swings both ways, which is what the screener rewards.</td>
+          <td><strong>v1 score (deprecated)</strong></td>
+          <td>The old <code>bullish_score</code> composite (activity × trend). Kept greyed
+          during the deprecation period for comparison only — it measured whether dips
+          <em>already</em> resolved upward over the lookback (survivorship-shaped), not
+          whether they will.</td>
         </tr>
       </tbody>
     </table>

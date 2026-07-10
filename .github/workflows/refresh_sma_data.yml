@@ -31,8 +31,15 @@ jobs:
       - name: Install Python dependencies
         run: uv sync
 
-      - name: Screen bullish oscillators
-        run: uv run python screen_bullish.py
+      # v2 pipeline: validation gates the signals and the dashboard banner.
+      - name: Run predictive validation
+        run: uv run python main.py validate
+
+      - name: Evaluate signal states
+        run: uv run python main.py signals
+
+      - name: Build leaderboard data
+        run: uv run python main.py leaderboard
 
       - name: Generate site data
         run: uv run python generate_data.py
