@@ -83,9 +83,14 @@ def build_leaderboard(rows: list[dict],
             "signal_state": sig["state"] if sig else "NONE",
         })
 
+    # NOTE: this is a diagnostic signal, not a gate. The §3 harness pools the
+    # entire universe into one cross-sectional test, which can mask a real
+    # signal that only holds within a coherent subgroup (e.g. a sector) — see
+    # README "Validation". Signals are shown regardless of this status.
     if validation is not None:
         validation_block = {
             "status": validation["status"],
+            "gates_signals": False,
             "rho": validation["split_half"].get("bounce_rate_rho"),
             "p": validation["split_half"].get("bounce_rate_p"),
             "n_tickers": validation["split_half"].get("n_tickers"),
@@ -95,6 +100,7 @@ def build_leaderboard(rows: list[dict],
     else:
         validation_block = {
             "status": "NOT_RUN",
+            "gates_signals": False,
             "interpretation": [
                 "Validation has not been run — treat every ranking below as "
                 "descriptive, not predictive. Run the `validate` command."],

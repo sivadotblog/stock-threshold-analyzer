@@ -2,8 +2,10 @@
  *
  * Primary ranking: bounce_rate_wilson_low (95% Wilson lower bound of the
  * bounce rate). The legacy v1 bullish_score is shown greyed and deprecated.
- * A validation banner (PASSED / WEAK / FAILED) gates how the table should be
- * read: without a PASSED validation, every row is descriptive, not a signal.
+ * The validation banner (PASSED / WEAK / FAILED) is diagnostic only: it pools
+ * the whole universe into one cross-sectional test, which can mask a real,
+ * sector-specific signal, so it does NOT suppress rows or signals here. Only
+ * the per-ticker low-sample flag (thin track record) does that.
  */
 (function () {
   "use strict";
@@ -42,9 +44,9 @@
       `<div style="background:${palette.bg};color:${palette.fg};border-left:4px solid ${palette.fg};` +
       `padding:10px 14px;border-radius:6px;margin:0.75rem 0;">` +
       `<strong>Predictive validation: ${status}</strong>${stats}` +
-      (status !== "PASSED"
-        ? `<br><span style="font-size:0.9em;">Signals are suppressed — treat every row below as historical description, not a trade recommendation.</span>`
-        : "") +
+      `<br><span style="font-size:0.9em;">Diagnostic only — does not suppress signals. This test pools the ` +
+      `entire universe into one correlation, which can mask a real, sector-specific pattern (e.g. a coherent ` +
+      `group of similar stocks might pass even when the mixed universe doesn't). See README "Validation".</span>` +
       (lines.length
         ? `<details style="margin-top:6px;"><summary style="cursor:pointer;font-size:0.85em;">interpretation</summary>` +
           `<ul style="margin:6px 0 0 1.2em;font-size:0.85em;">` +

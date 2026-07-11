@@ -72,19 +72,35 @@ Common flags: `--threshold/-p 10`, `--years 5`, `--tickers ZETA,NVDA` (subset),
 `--max-age-days 7` (trust an older price cache). All tunables live in
 `config.yaml → v2` — no magic constants in code.
 
-## Validation gate (read this before believing the leaderboard)
+## Validation (diagnostic, not a gate)
 
 `validate` answers: *does past bounce_rate predict future bounce_rate across
 tickers?* — split-half Spearman correlation plus a rolling 2.5y→1y variant
 stepped quarterly (guards against one lucky split point). The verdict
-(**PASSED / WEAK / FAILED**) is shown as a banner on the dashboard and gates
-the signal engine: anything not PASSED renders would-be signals as
-`SUPPRESSED` with the reason. "No evidence" renders as "no signal", not a
-hopeful arrow.
+(**PASSED / WEAK / FAILED**) is shown as a banner on the dashboard, but it is
+**informational only — it does not suppress or gate any signal**.
 
-As of the first full-universe run (Jul 2026, N=10%): **FAILED** — split-half
-ρ≈0.15 (p≈0.002) but the rolling check is unstable (median ρ≈0). The
-leaderboard is a historical base-rate display, not a prediction.
+Why not a gate: the test pools the *entire* universe (currently ~600 tickers
+spanning very different sectors and leverage profiles) into a single
+cross-sectional correlation. A real, sector-specific persistence pattern can
+be masked by that pooling — a coherent subgroup (say, a handful of space
+stocks) could have genuine out-of-sample signal even while the aggregate
+universe (space + oil + leveraged ETFs + everything else) fails, because
+unrelated names dilute the correlation. Treating a single universe-wide
+verdict as a per-ticker kill switch would silently suppress signals that
+might be perfectly good for a given ticker's actual peer group.
+
+The only thing that suppresses a signal today is the per-ticker **low-sample
+gate**: a `BUY_SETUP` renders as `SUPPRESSED` if the ticker has fewer than
+`low_sample_min_events` (default 10) historical down-events to base the
+statistic on. "No evidence" renders as "no signal", not a hopeful arrow.
+
+**Planned follow-up**: a sector/industry-stratified validation harness (test
+each ticker against a comparison group of similar names, not the whole
+universe) would let validation legitimately gate signals again. This isn't
+implemented yet — the codebase has no per-ticker sector/industry metadata,
+only index-membership categories (`sp500`, `leveraged_*`, etc.) in
+`config.yaml`. Adding a ticker→sector mapping is a prerequisite.
 
 ## Backtest
 

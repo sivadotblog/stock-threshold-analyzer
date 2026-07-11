@@ -331,27 +331,43 @@ def test_rank_asof_uses_only_past_data():
 # §5.5 signal states + §6 signal/backtest parity
 # ---------------------------------------------------------------------------
 
-def test_signal_states_buy_setup_and_suppression():
+def test_signal_states_buy_setup_not_gated_by_validation():
+    """The universe-wide validation status is informational only (see
+    signals.py docstring): pooling the whole universe into one cross-sectional
+    test can mask a real, sector-specific signal, so it must not silently
+    suppress every ticker's BUY_SETUP. Only the per-ticker low-sample gate
+    (thin track record) suppresses."""
     # d9 close 88 prints a fresh down-trigger (anchor 98) on the last day
     closes = [100, 89, 85, 100, 100, 89, 90, 98, 100, 88]
     opens = [100, 100, 89, 85, 100, 100, 88, 90, 100, 100]
     prices, res = scenario(closes, opens=opens)
     as_of = prices["date"].iloc[-1]
 
-    rows = evaluate_states(res, as_of, ENGINE_CFG, "PASSED")
-    buy = next(r for r in rows if r["state"] == BUY_SETUP)
-    assert buy["ticker"] == "A"
-    assert buy["trigger_price"] == 88.0
-    assert buy["actionable_from"] > str(as_of.date())  # never same-day
-    assert buy["stop_price"] is not None
-    assert "bounced" in buy["base_rate"]
-
-    for status in ("WEAK", "FAILED", "NOT_RUN"):
+    for status in ("PASSED", "WEAK", "FAILED", "NOT_RUN"):
         rows = evaluate_states(res, as_of, ENGINE_CFG, status)
-        sup = next(r for r in rows if r["ticker"] == "A")
-        assert sup["state"] == SUPPRESSED
-        assert sup["underlying_state"] == BUY_SETUP
-        assert status in sup["suppressed_reason"] or "validation" in sup["suppressed_reason"]
+        buy = next(r for r in rows if r["state"] == BUY_SETUP)
+        assert buy["ticker"] == "A"
+        assert buy["trigger_price"] == 88.0
+        assert buy["actionable_from"] > str(as_of.date())  # never same-day
+        assert buy["stop_price"] is not None
+        assert "bounced" in buy["base_rate"]
+        assert buy["validation_status"] == status  # attached, not enforced
+
+
+def test_signal_states_low_sample_still_suppressed():
+    """The per-ticker low-sample gate is unrelated to the universe-wide
+    validation test and must still apply."""
+    closes = [100, 89, 85, 100, 100, 89, 90, 98, 100, 88]
+    opens = [100, 100, 89, 85, 100, 100, 88, 90, 100, 100]
+    cfg = {**ENGINE_CFG, "low_sample_min_events": 10}
+    prices, res = scenario(closes, opens=opens, cfg=cfg)
+    as_of = prices["date"].iloc[-1]
+
+    rows = evaluate_states(res, as_of, cfg, "PASSED")
+    sup = next(r for r in rows if r["ticker"] == "A")
+    assert sup["state"] == SUPPRESSED
+    assert sup["underlying_state"] == BUY_SETUP
+    assert "low sample" in sup["suppressed_reason"]
 
 
 def test_signal_states_in_trade():

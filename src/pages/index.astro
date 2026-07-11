@@ -13,8 +13,10 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     recovered <strong>+10%</strong> before triggering another −10%? Ranked by the
     <strong>95% Wilson lower bound</strong> of the historical bounce rate, so thin samples
     are penalized automatically. This is a <em>base-rate display, not a prediction</em>:
-    whether the ranking predicts anything at all is tested out-of-sample and reported in
-    the banner below.
+    whether the ranking predicts anything out-of-sample is tested cross-sectionally and
+    reported in the banner below, but as a diagnostic only — it pools the whole universe
+    into one correlation, which can mask a real, sector-specific pattern, so it does not
+    suppress any signal below.
   </p>
 
   <p id="bullish-meta"><em>Loading screen…</em></p>
@@ -74,8 +76,8 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
           <td>Current §5.5 state: <code>BUY_SETUP</code> (fresh −10% trigger on a top-K
           ticker, actionable at the <em>next open</em> — never same-day),
           <code>IN_TRADE</code>, <code>SELL_*</code> (mechanical exits), or
-          <code>SUPPRESSED</code> (a signal would exist, but validation is WEAK/FAILED or
-          the sample is too thin — greyed reason in the tooltip, never actionable).
+          <code>SUPPRESSED</code> (a signal would exist, but the ticker's own sample is too
+          thin — &lt;10 down events — greyed reason in the tooltip, never actionable).
           Hover a badge for trigger price, stop level, time-stop date and the historical
           base rate behind it.</td>
         </tr>

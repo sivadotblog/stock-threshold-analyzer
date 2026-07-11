@@ -5,14 +5,22 @@ test asserts they can never drift apart.
 
 States:
 * ``BUY_SETUP``      — latest close printed a -N% trigger on a current top-K
-                       ticker AND validation status is PASSED.
+                       ticker.
 * ``IN_TRADE``       — a prior BUY_SETUP is still unresolved.
 * ``SELL_RECOVERY``  / ``SELL_STOP`` / ``SELL_TIME`` — mechanical exits.
 * ``NONE``           — watchlist ticker with no active trigger.
-* ``SUPPRESSED``     — the mechanical signal exists but validation is
-                       WEAK/FAILED or the row is low-sample: greyed reason,
-                       never an actionable state. "No evidence" renders as
-                       "no signal", not a hopeful arrow.
+* ``SUPPRESSED``     — the mechanical signal exists but the row is
+                       low-sample (n_down_events < low_sample_min_events):
+                       greyed reason, never an actionable state.
+
+NOTE: the §3 cross-sectional validation status (PASSED/WEAK/FAILED) is no
+longer used to gate signals here. That test pools the *entire* universe into
+one Spearman correlation, which can mask a real, sector-specific persistence
+pattern (a heterogeneous pool of e.g. oil + growth + leveraged names can fail
+even if a coherent subgroup would pass) — see README "Validation" section.
+``validation_status`` is still threaded through and attached to every row for
+display/diagnostic purposes; a sector-stratified validation harness that could
+legitimately gate signals is a planned follow-up, not implemented yet.
 
 Every emitted row carries its historical base rate ("bounced 41/52, Wilson low
 0.68") — this is a base-rate display, not a prediction.
@@ -52,8 +60,10 @@ def evaluate_states(engine_result: dict,
     """Convert an engine run into the §5.5 state rows at ``as_of``.
 
     ``engine_result`` is ``backtest.run_engine`` output over a calendar ending
-    at ``as_of``. Suppression (validation gate, low-sample gate) happens here,
-    in the presentation layer — the engine stays purely mechanical.
+    at ``as_of``. Suppression (the low-sample gate) happens here, in the
+    presentation layer — the engine stays purely mechanical.
+    ``validation_status`` is attached to every row for display only; it does
+    NOT suppress signals (see module docstring).
     """
     as_of = pd.Timestamp(as_of)
     actionable_from = _next_trading_day(as_of)
@@ -64,7 +74,6 @@ def evaluate_states(engine_result: dict,
              if len(signals) else pd.DataFrame(columns=["ticker", "state"]))
     today_by_ticker = {r["ticker"]: r for _, r in today.iterrows()}
 
-    validation_ok = validation_status == "PASSED"
     rows: list[dict] = []
     tickers = sorted(set(watchlist) | set(positions) | set(today_by_ticker))
 
@@ -122,11 +131,11 @@ def evaluate_states(engine_result: dict,
             else:  # a SELL on a position force-closed same day; keep the record
                 row["state"] = sig["state"]
 
-        # --- honesty gate: suppress anything actionable without evidence ---
+        # --- low-sample gate: suppress a BUY_SETUP with too thin a track
+        # record. (The universe-wide validation status is informational only
+        # — see module docstring — and does not suppress signals.) ---
         if row["state"] in ACTIONABLE:
             reasons = []
-            if not validation_ok:
-                reasons.append(f"validation {validation_status}")
             if row["state"] == BUY_SETUP and row.get("low_sample"):
                 reasons.append(
                     f"low sample (n={w.get('n_down_events')} down events)")
