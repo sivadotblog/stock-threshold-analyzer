@@ -7,21 +7,21 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     <link rel="stylesheet" href="https://unpkg.com/tabulator-tables@6.3.0/dist/css/tabulator_simple.min.css" />
   </Fragment>
 
-  <h1>Dip-Buy Leaderboard — bounce reliability at −10%</h1>
+  <h1>Oscillation Leaderboard — +10% harvests per year</h1>
   <p>
-    Given a <strong>−10% trigger</strong>, how reliably — and how fast — has each ticker
-    recovered <strong>+10%</strong> before triggering another −10%? Ranked by the
-    <strong>95% Wilson lower bound</strong> of the historical bounce rate, so thin samples
-    are penalized automatically. This is a <em>base-rate display, not a prediction</em>:
-    whether the ranking predicts anything out-of-sample is tested cross-sectionally and
-    reported in the banner below, but as a diagnostic only — it pools the whole universe
-    into one correlation, which can mask a real, sector-specific pattern, so it does not
-    suppress any signal below.
+    The goal is simple compounding: repeated <strong>+10% harvests</strong> on stocks that
+    oscillate a lot while net-trending up. Every completed <strong>+10% leg</strong>
+    (anchor-reset rule) is one harvestable recovery, so the ranking key is
+    <strong>positive oscillations per year</strong> among tickers whose lookback drift is
+    positive — downtrenders are kept but greyed and ranked last. Consecutive down-legs are
+    never penalized: a stock that dipped three times before recovering is oscillation
+    richness, not failure. <strong>Signal</strong> is simply the direction of the latest
+    ±10% event (down leg = <code>BUY</code>, up leg = <code>SELL</code>); whether to act
+    is your decision — nothing here tracks trades. Investigate any ticker in the chart
+    explorer.
   </p>
 
   <p id="bullish-meta"><em>Loading screen…</em></p>
-
-  <div id="validation-banner"></div>
 
   <div id="bullish-scatter" style="min-height:520px;"></div>
 
@@ -44,12 +44,8 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       <input type="number" id="f-rank-max" placeholder="e.g. 100" min="1" />
     </div>
     <div class="tb-filter-group">
-      <label for="f-wilson-min">Wilson low ≥</label>
-      <input type="number" id="f-wilson-min" placeholder="e.g. 0.5" step="0.01" min="0" max="1" />
-    </div>
-    <div class="tb-filter-group">
-      <label for="f-n-min">n events ≥</label>
-      <input type="number" id="f-n-min" placeholder="e.g. 10" min="0" />
+      <label for="f-osc-min">Up-legs/yr ≥</label>
+      <input type="number" id="f-osc-min" placeholder="e.g. 8" step="0.5" min="0" />
     </div>
     <div class="tb-filter-group">
       <label>CAGR%</label>
@@ -73,50 +69,40 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       <tbody>
         <tr>
           <td><strong>Signal</strong></td>
-          <td>Current §5.5 state: <code>BUY_SETUP</code> (fresh −10% trigger on a top-K
-          ticker, actionable at the <em>next open</em> — never same-day),
-          <code>IN_TRADE</code>, <code>SELL_*</code> (mechanical exits), or
-          <code>SUPPRESSED</code> (a signal would exist, but the ticker's own sample is too
-          thin — &lt;10 down events — greyed reason in the tooltip, never actionable).
-          Hover a badge for trigger price, stop level, time-stop date and the historical
-          base rate behind it.</td>
+          <td>The direction of the <em>latest</em> ±10% threshold event, shown with its
+          date. <code>BUY</code>: the last leg was −10% — price sits at least 10% below the
+          previous anchor. <code>SELL</code>: the last leg was +10% — a harvest just
+          completed. The signal is stateless and persists until the next event; hover the
+          badge for the event price and how far price has moved since. Note the SELL is
+          anchor-based, not entry-based: if interim dips reset the anchor lower, a SELL can
+          fire below <em>your</em> entry +10% — judge it against your own position.</td>
         </tr>
         <tr>
-          <td><strong>Wilson low</strong></td>
-          <td>The ranking key: lower bound of the 95% Wilson confidence interval on the
-          bounce rate. A ticker that bounced 5/5 ranks <em>below</em> one that bounced
-          40/52 — small samples get less credit, replacing any hard eligibility cutoff.</td>
+          <td><strong>Up-legs/yr</strong></td>
+          <td>The ranking key: completed +10% legs per year of data. Each up-leg is one
+          realized, harvestable +10% recovery — no pairing with dips, no outcome
+          classification, so overlapping dip clusters can't distort it.</td>
         </tr>
         <tr>
-          <td><strong>Bounce rate</strong></td>
-          <td>Of the −10% triggers that resolved, the fraction whose <em>next</em> event
-          was the +10% recovery (a bounce) rather than another −10% drop (a
-          continuation), shown with the raw counts. Unresolved (censored) triggers are
-          excluded from the rate but counted in <strong>Cens</strong> — a ticker whose
-          last dip never resolved is important information.</td>
+          <td><strong>n▲ / n▼</strong></td>
+          <td>Raw counts of +10% and −10% legs over the window — the evidence behind the
+          rate, never hidden. A young listing can show a high rate on few legs; check n▲.</td>
         </tr>
         <tr>
-          <td><strong>n▼ / Cens</strong></td>
-          <td>Number of −10% down-triggers in the 5-year window (the denominator — never
-          hidden), and how many of them are still unresolved. ⚠️ marks
-          <code>low_sample</code> rows (&lt;10 down events).</td>
+          <td><strong>Since%</strong></td>
+          <td>How far price has moved since the signal event's close. On a BUY row, a
+          negative value means the dip has deepened further below the trigger.</td>
         </tr>
         <tr>
-          <td><strong>Med / p90 days</strong></td>
-          <td>Median and 90th-percentile calendar days from a −10% trigger to its +10%
-          recovery, over bounce-resolved events. p90 is the tail risk of capital being
-          stuck.</td>
+          <td><strong>CAGR%</strong></td>
+          <td>Growth context: annualized return over the lookback. Tickers with negative
+          drift (📉, greyed) are not candidates no matter how much they oscillate — they
+          rank below every trend-positive name.</td>
         </tr>
         <tr>
-          <td><strong>Med / Worst MAE%</strong></td>
-          <td>Max adverse excursion: how much further the price fell beyond the trigger
-          before resolving. Expect a typical entry to get about the median MAE worse
-          before it recovers; the stop is sized from this.</td>
-        </tr>
-        <tr>
-          <td><strong>Expect%</strong></td>
-          <td>Mean signed return per resolved trigger (bounces contribute ~+10%,
-          continuations ~−10%), before costs.</td>
+          <td><strong>MaxDD%</strong></td>
+          <td>Volatility context: worst peak-to-trough drawdown over the lookback. The
+          price of admission for the oscillations.</td>
         </tr>
         <tr>
           <td><strong>Streak</strong></td>
@@ -125,13 +111,6 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         <tr>
           <td><strong>Recent Δ</strong></td>
           <td>Every ±10% threshold crossing in the last 30 days, oldest to newest — e.g. <code>-1↓ -1↓ +1↑</code> for two down-legs then an up-leg. Based on the actual sequence of events, not calendar days, so it isn't affected by weekends/holidays and naturally shows more badges for an active stock and fewer for a quiet one.</td>
-        </tr>
-        <tr>
-          <td><strong>v1 score (deprecated)</strong></td>
-          <td>The old <code>bullish_score</code> composite (activity × trend). Kept greyed
-          during the deprecation period for comparison only — it measured whether dips
-          <em>already</em> resolved upward over the lookback (survivorship-shaped), not
-          whether they will.</td>
         </tr>
       </tbody>
     </table>

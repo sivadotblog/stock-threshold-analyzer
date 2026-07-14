@@ -2,10 +2,10 @@
 """
 Generate per-ticker JSON files consumed by the SMA static site.
 
-Reads the top N tickers from sma/data/bullish_screen.json (produced by
-screen_bullish.py) and fetches their price history from Yahoo Finance.
+Reads the top N tickers from public/data/bullish_screen.json (produced by
+`main.py leaderboard`) and fetches their price history from Yahoo Finance.
 
-Run order: screen_bullish.py → generate_data.py
+Run order: main.py leaderboard → generate_data.py
 
 For each ticker:
   - Writes sma/data/{TICKER}.json:
@@ -42,7 +42,7 @@ SCREEN_PATH = OUTPUT_DIR / "bullish_screen.json"
 def _tickers_from_screen() -> list[str]:
     if not SCREEN_PATH.exists():
         raise SystemExit(
-            f"'{SCREEN_PATH}' not found — run screen_bullish.py first."
+            f"'{SCREEN_PATH}' not found — run `main.py leaderboard` first."
         )
     data = json.loads(SCREEN_PATH.read_text())
     tickers = [r["ticker"] for r in data["results"][:TOP_N]]
