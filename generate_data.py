@@ -63,6 +63,9 @@ def fetch_one(ticker: str, start: str, end: str) -> dict:
         pass
 
     hist = tk.history(start=start, end=end, auto_adjust=True)
+    # Yahoo occasionally returns a half-formed latest bar with a NaN close —
+    # a literal NaN in the payload is invalid JSON and breaks the chart page.
+    hist = hist.dropna(subset=["Close"])
     if hist.empty:
         raise SystemExit(f"No data returned for ticker '{ticker}'. Check the symbol.")
 
@@ -100,7 +103,8 @@ def main() -> int:
     for ticker in tickers:
         payload = fetch_one(ticker, start, end)
         out = OUTPUT_DIR / f"{ticker}.json"
-        out.write_text(json.dumps(payload, separators=(",", ":")))
+        # allow_nan=False: fail loudly here rather than shipping invalid JSON
+        out.write_text(json.dumps(payload, separators=(",", ":"), allow_nan=False))
         print(f"     wrote {out} ({len(payload['prices']):,} rows)")
         manifest["tickers"].append({
             "ticker": ticker,

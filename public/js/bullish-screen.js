@@ -37,7 +37,7 @@
       `up-legs/yr: <b>${fmt(r.up_legs_per_year, 1)}</b> (${r.n_up}▲ / ${r.n_down}▼)<br>` +
       `CAGR: ${fmt(r.cagr_pct, 1)}%/yr<br>` +
       `MaxDD: ${fmt(r.max_drawdown_pct, 1)}%<br>` +
-      `signal: ${r.signal} since ${r.last_event_date} (${fmt(r.pct_since_signal, 1)}% since)`;
+      `last signal: ${r.signal} @ ${fmt(r.signal_price, 2)} on ${r.last_event_date} (${fmt(r.pct_since_signal, 1)}% since)`;
 
     const traces = [{
       type: "scattergl", mode: "markers",
@@ -107,21 +107,37 @@
       }).join(" ");
     };
 
-    // Signal = latest threshold event's direction. BUY: price printed a -10%
-    // leg and hasn't completed a +10% one since. SELL: the opposite.
-    const signalFmt = (cell) => {
-      const r = cell.getRow().getData();
-      const s = cell.getValue();
+    const signalBadge = (s, date, price, extraTip) => {
       if (s !== "BUY" && s !== "SELL") return `<span style="opacity:0.35;">—</span>`;
       const buy = s === "BUY";
-      const tip = `${buy ? "-10%" : "+10%"} leg on ${r.last_event_date} at ${r.signal_price}; ` +
-                  `${fmt(r.pct_since_signal, 1)}% since. Stateless: the latest ±10% event's ` +
-                  `direction — whether to act is your decision.`;
+      const tip = `${buy ? "-10%" : "+10%"} leg on ${date} at ${price}.` +
+                  (extraTip ? " " + extraTip : "");
       const style = buy
         ? "background:var(--up-bg,#e0f2fe);color:var(--up,#0369a1);"
         : "background:var(--down-bg,#fff7ed);color:var(--down,#c2410c);";
-      return `<span title="${tip.replaceAll('"', "&quot;")}" style="font-size:0.75em;font-weight:700;padding:2px 8px;border-radius:20px;${style}">${s}</span>` +
-             `<span style="margin-left:6px;opacity:0.55;font-size:0.78em;">${r.last_event_date || ""}</span>`;
+      return `<span title="${tip.replaceAll('"', "&quot;")}" style="font-size:0.75em;font-weight:700;padding:2px 8px;border-radius:20px;${style}">${s} @ ${fmt(price, 2)}</span>` +
+             `<span style="margin-left:6px;opacity:0.55;font-size:0.78em;">${date || ""}</span>`;
+    };
+
+    // Last signal = latest threshold event (history, not a realtime state).
+    const lastSignalFmt = (cell) => {
+      const r = cell.getRow().getData();
+      return signalBadge(cell.getValue(), r.last_event_date, r.signal_price,
+        `${fmt(r.pct_since_signal, 1)}% since. Whether to act is your decision.`);
+    };
+
+    const prevSignalFmt = (cell) => {
+      const r = cell.getRow().getData();
+      return signalBadge(cell.getValue(), r.prev_signal_date, r.prev_signal_price);
+    };
+
+    // Where the opposite signal fires: last BUY at 100 -> "SELL ≥ 110".
+    const targetFmt = (cell) => {
+      const r = cell.getRow().getData();
+      if (!r.target_price) return `<span style="opacity:0.35;">—</span>`;
+      const sell = r.target_side === "SELL";
+      const color = sell ? "var(--down,#c2410c)" : "var(--up,#0369a1)";
+      return `<span style="font-weight:600;color:${color};">${r.target_side} ${sell ? "≥" : "≤"} ${fmt(r.target_price, 2)}</span>`;
     };
 
     const tickerFmt = (cell) => {
@@ -145,7 +161,9 @@
       columns: [
         { title: "#", field: "rank", sorter: "number", hozAlign: "right", width: 55 },
         { title: "Ticker", field: "ticker", sorter: "string", width: 105, formatter: tickerFmt },
-        { title: "Signal", field: "signal", sorter: "string", hozAlign: "left", width: 165, formatter: signalFmt },
+        { title: "Last signal", field: "signal", sorter: "string", hozAlign: "left", width: 195, formatter: lastSignalFmt },
+        { title: "Prev", field: "prev_signal", sorter: "string", hozAlign: "left", width: 195, formatter: prevSignalFmt },
+        { title: "Target", field: "target_price", sorter: "number", hozAlign: "left", width: 130, formatter: targetFmt },
         { title: "Up-legs/yr", field: "up_legs_per_year", sorter: "number", hozAlign: "right", width: 105,
           formatter: (cell) => `<b>${fmt(cell.getValue(), 1)}</b>` },
         { title: "n▲", field: "n_up", sorter: "number", hozAlign: "right", width: 60 },

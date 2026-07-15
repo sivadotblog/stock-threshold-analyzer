@@ -78,6 +78,13 @@ def test_mixed_summary():
     assert s["pct_since_signal"] == pytest.approx((84 - 86) / 86 * 100, abs=0.01)
     assert s["trend_positive"] is False         # 84 vs 100 start
     assert s["net_return_pct"] == pytest.approx(-16.0, abs=0.01)
+    # last signal SELL @ 86 -> next dip trigger at 86 * 0.9
+    assert s["target_side"] == SIGNAL_BUY
+    assert s["target_price"] == pytest.approx(86 * 0.9, abs=0.01)
+    # previous event was the d5 down leg at 77
+    assert s["prev_signal"] == SIGNAL_BUY
+    assert s["prev_signal_price"] == 77.0
+    assert s["prev_signal_date"] == prices["date"].iloc[5].strftime("%Y-%m-%d")
 
 
 def test_buy_signal_after_down_leg():
@@ -86,6 +93,23 @@ def test_buy_signal_after_down_leg():
     assert s["signal_price"] == 89.0
     assert s["current_streak"] == -1
     assert s["pct_since_signal"] == pytest.approx((88 - 89) / 89 * 100, abs=0.01)
+    # BUY at 89 -> harvest target SELL >= 89 * 1.1
+    assert s["target_side"] == SIGNAL_SELL
+    assert s["target_price"] == pytest.approx(89 * 1.1, abs=0.01)
+    assert s["prev_signal"] is None             # only one event so far
+
+
+def test_nan_closes_are_dropped():
+    """A half-formed Yahoo bar (NaN close) must not poison the stats or leak
+    NaN into the payload (NaN is invalid JSON and broke the site)."""
+    closes = MIXED_CLOSES + [float("nan")]
+    s = compute_oscillation_summary(make_prices(closes), threshold_pct=10.0)
+    clean = compute_oscillation_summary(make_prices(MIXED_CLOSES), threshold_pct=10.0)
+    assert s == clean
+
+    from main import _sanitize
+    assert _sanitize({"a": float("nan"), "b": [1.0, float("inf")], "c": 2.5}) == \
+        {"a": None, "b": [1.0, None], "c": 2.5}
 
 
 def test_no_events_no_signal():

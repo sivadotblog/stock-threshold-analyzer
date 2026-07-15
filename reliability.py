@@ -33,10 +33,11 @@ import pandas as pd
 
 DEFAULT_RECENT_WINDOW_DAYS = 30
 
-# Signal = direction of the latest threshold event, nothing more. A down leg
-# means price sits -N% from the last anchor (a dip you could buy); an up leg
-# means a +N% move just completed (a harvest you could sell). Whether to act
-# is the investor's decision — there is no position tracking anywhere.
+# The LAST signal = direction of the latest threshold event, nothing more. A
+# down leg means price printed -N% from the last anchor (a dip you could buy);
+# an up leg means a +N% move completed (a harvest you could sell). It is not a
+# realtime state: it stays what it was until the next event fires. Whether to
+# act is the investor's decision — there is no position tracking anywhere.
 SIGNAL_BUY = "BUY"
 SIGNAL_SELL = "SELL"
 SIGNAL_NONE = "NONE"
@@ -109,9 +110,11 @@ def compute_oscillation_summary(prices: pd.DataFrame,
 
     Returns a dict with the leg counts, ``up_legs_per_year`` (the ranking key:
     completed +N% recoveries per year of data), ``trend_positive`` (drift
-    filter), CAGR / max-drawdown context, the current streak, the stateless
-    BUY/SELL signal derived from the latest event, and ``recent_events``
-    (every event in the trailing ``recent_window_days``, oldest first).
+    filter), CAGR / max-drawdown context, the current streak, the last and
+    previous signals (direction/date/price of the latest two events — these
+    are history, not realtime states), ``target_price`` (where the opposite
+    signal would fire: a BUY at 100 harvests at SELL >= 110), and
+    ``recent_events`` (every event in the trailing window, oldest first).
     """
     out = {
         "n_up": 0,
@@ -128,6 +131,11 @@ def compute_oscillation_summary(prices: pd.DataFrame,
         "signal": SIGNAL_NONE,
         "signal_price": None,
         "pct_since_signal": None,
+        "target_side": None,
+        "target_price": None,
+        "prev_signal": None,
+        "prev_signal_date": None,
+        "prev_signal_price": None,
         "recent_events": [],
     }
 
@@ -136,6 +144,10 @@ def compute_oscillation_summary(prices: pd.DataFrame,
 
     prices = prices.reset_index(drop=True).copy()
     prices["date"] = pd.to_datetime(prices["date"], format="mixed", dayfirst=False)
+    # NaN closes (half-formed Yahoo bars, stale caches) would poison every stat.
+    prices = prices.dropna(subset=["close"]).reset_index(drop=True)
+    if len(prices) < 2:
+        return out
     as_of = as_of or prices["date"].iloc[-1].date()
 
     events = find_threshold_events(prices, threshold_pct)
@@ -178,6 +190,22 @@ def compute_oscillation_summary(prices: pd.DataFrame,
         out["signal_price"] = round(signal_price, 4)
         out["pct_since_signal"] = round(
             (close[-1] - signal_price) / signal_price * 100, 2)
+
+        # Where the opposite signal fires: a BUY at 100 harvests at SELL >= 110;
+        # a SELL at 110 sets the next dip trigger at BUY <= 99.
+        if out["signal"] == SIGNAL_BUY:
+            out["target_side"] = SIGNAL_SELL
+            out["target_price"] = round(signal_price * (1 + threshold_pct / 100), 4)
+        else:
+            out["target_side"] = SIGNAL_BUY
+            out["target_price"] = round(signal_price * (1 - threshold_pct / 100), 4)
+
+        if len(ev) >= 2:
+            prev = ev.iloc[-2]
+            out["prev_signal"] = (SIGNAL_BUY if prev["direction"] == "down"
+                                  else SIGNAL_SELL)
+            out["prev_signal_date"] = prev["date"].strftime("%Y-%m-%d")
+            out["prev_signal_price"] = round(float(prev["price"]), 4)
 
     window_start = as_of - timedelta(days=recent_window_days)
     in_window = ev[(ev["date"].dt.date > window_start) & (ev["date"].dt.date <= as_of)]

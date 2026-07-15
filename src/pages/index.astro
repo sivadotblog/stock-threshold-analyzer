@@ -68,14 +68,20 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       <thead><tr><th>Field</th><th>What it means</th></tr></thead>
       <tbody>
         <tr>
-          <td><strong>Signal</strong></td>
-          <td>The direction of the <em>latest</em> ±10% threshold event, shown with its
-          date. <code>BUY</code>: the last leg was −10% — price sits at least 10% below the
-          previous anchor. <code>SELL</code>: the last leg was +10% — a harvest just
-          completed. The signal is stateless and persists until the next event; hover the
-          badge for the event price and how far price has moved since. Note the SELL is
-          anchor-based, not entry-based: if interim dips reset the anchor lower, a SELL can
-          fire below <em>your</em> entry +10% — judge it against your own position.</td>
+          <td><strong>Last signal / Prev</strong></td>
+          <td>The two most recent ±10% threshold events — direction, price, and date.
+          These are <em>history, not realtime states</em>: <code>BUY @ 100 · 6/10</code>
+          means a −10% leg completed at $100 on June 10 and nothing has triggered since.
+          <code>SELL</code>: a +10% leg (harvest) completed. Note a SELL is anchor-based,
+          not entry-based: if interim dips reset the anchor lower, a SELL can fire below
+          <em>your</em> entry +10% — judge it against your own position.</td>
+        </tr>
+        <tr>
+          <td><strong>Target</strong></td>
+          <td>Where the opposite signal fires from the last event's price. After a
+          <code>BUY @ 100</code> the harvest is <code>SELL ≥ 110</code>; after a
+          <code>SELL @ 110</code> the next dip trigger is <code>BUY ≤ 99</code>.
+          (Another −10% leg below a BUY also resets the anchor — and the target — lower.)</td>
         </tr>
         <tr>
           <td><strong>Up-legs/yr</strong></td>

@@ -43,9 +43,23 @@ def _json_default(o):
     raise TypeError(f"not JSON serializable: {type(o)}")
 
 
+def _sanitize(o):
+    """Replace NaN/Inf with None recursively — json.dumps serializes plain
+    Python float('nan') as a literal NaN (invalid JSON) without ever calling
+    the ``default`` hook, so this must run on values, not just unknown types."""
+    if isinstance(o, dict):
+        return {k: _sanitize(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [_sanitize(v) for v in o]
+    if isinstance(o, float) and not np.isfinite(o):
+        return None
+    return o
+
+
 def _write_json(path: Path, payload) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, default=_json_default))
+    path.write_text(json.dumps(_sanitize(payload), indent=2,
+                               default=_json_default, allow_nan=False))
     print(f"wrote {path}")
 
 

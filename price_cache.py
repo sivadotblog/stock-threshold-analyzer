@@ -29,7 +29,11 @@ def _load_prices(ticker: str, years: int) -> Optional[pd.DataFrame]:
     )
     if hist.empty:
         return None
-    df = hist[["Close"]].copy()
+    # Yahoo occasionally returns a half-formed latest bar with a NaN close;
+    # a NaN would poison every downstream stat and serialize as invalid JSON.
+    df = hist[["Close"]].dropna().copy()
+    if df.empty:
+        return None
     df.index = pd.to_datetime(df.index).tz_localize(None)
     df = df.reset_index().rename(columns={"Date": "date", "Close": "close"})
     df["date"] = pd.to_datetime(df["date"]).dt.normalize()
@@ -61,7 +65,8 @@ def load_cached_prices(ticker: str, years: int = 5,
 
     if path.exists() and _age_days(path) <= max_age_days:
         try:
-            df = pd.read_csv(path, parse_dates=["date"])
+            # dropna: cache files written before the NaN guard may carry NaN rows
+            df = pd.read_csv(path, parse_dates=["date"]).dropna(subset=["close"])
             if not df.empty:
                 return df
         except Exception:  # noqa: BLE001 -- corrupt cache -> fall through to refetch
@@ -74,57 +79,6 @@ def load_cached_prices(ticker: str, years: int = 5,
         return None
     if df is None or df.empty:
         return None
-
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    try:
-        df.to_csv(path, index=False)
-    except Exception:  # noqa: BLE001 -- caching is best-effort
-        pass
-    return df
-
-
-def _ohlc_cache_path(ticker: str, years: int) -> Path:
-    return CACHE_DIR / f"{ticker.upper()}_{years}y_ohlc.csv"
-
-
-def load_cached_ohlc(ticker: str, years: int = 5,
-                     max_age_days: float = 1.0) -> Optional[pd.DataFrame]:
-    """Like ``load_cached_prices`` but with the full adjusted OHLC bar:
-    ['date','open','high','low','close']. Needed by the v2 backtest/signal
-    engine (next-open fills, intraday stop checks). Cached separately as
-    ``{TICKER}_{years}y_ohlc.csv``. Returns ``None`` on any failure.
-    """
-    path = _ohlc_cache_path(ticker, years)
-
-    if path.exists() and _age_days(path) <= max_age_days:
-        try:
-            df = pd.read_csv(path, parse_dates=["date"])
-            if not df.empty:
-                return df
-        except Exception:  # noqa: BLE001 -- corrupt cache -> fall through to refetch
-            pass
-
-    end = datetime.utcnow()
-    start = end - timedelta(days=years * 365)
-    try:
-        time.sleep(_FETCH_THROTTLE_SEC)
-        hist = yf.Ticker(ticker).history(
-            start=start.strftime("%Y-%m-%d"),
-            end=end.strftime("%Y-%m-%d"),
-            auto_adjust=True,
-        )
-    except Exception:  # noqa: BLE001
-        return None
-    if hist.empty:
-        return None
-
-    df = hist[["Open", "High", "Low", "Close"]].copy()
-    df.index = pd.to_datetime(df.index).tz_localize(None)
-    df = df.reset_index().rename(columns={
-        "Date": "date", "Open": "open", "High": "high",
-        "Low": "low", "Close": "close",
-    })
-    df["date"] = pd.to_datetime(df["date"]).dt.normalize()
 
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     try:

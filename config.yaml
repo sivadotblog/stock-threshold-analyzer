@@ -17,9 +17,11 @@ analyzer:
   thresholds_pct: [10.0]        # ±N% leg sizes analyzed / reported
   lookback_years: 5             # price history window
   recent_window_days: 30        # "Recent Δ" column: events in the trailing N days
-  # Leveraged ETFs are excluded from the default universe: volatility decay makes
-  # their event statistics non-comparable. Flip to true to include them anyway.
-  include_leveraged: false
+  # Leveraged ETFs (TQQQ, SOXL, ...) are part of the universe. The old
+  # predictive pipeline excluded them (volatility decay skewed cross-ticker
+  # stats); the descriptive model just reports what each ticker printed and
+  # the investor judges — so they screen like everything else.
+  include_leveraged: true
 
 # ---------------------------------------------------------------------------
 # Screening universe for screen_bullish.py.
