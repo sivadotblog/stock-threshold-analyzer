@@ -17,6 +17,13 @@ analyzer:
   thresholds_pct: [10.0]        # ±N% leg sizes analyzed / reported
   lookback_years: 5             # price history window
   recent_window_days: 30        # "Recent Δ" column: events in the trailing N days
+  # Parabolic gate: a ticker whose close ever reached parabolic_max_run_up_pct
+  # above its lowest close in the trailing parabolic_window_days (CIFR $3->$25,
+  # PL) printed its legs in a one-way regime shift, not a repeatable dip-cycle.
+  # It keeps its row but is flagged `parabolic` and ranked below every steady
+  # trend-positive ticker. 200 = 3x from the trailing low.
+  parabolic_window_days: 365
+  parabolic_max_run_up_pct: 200
   # Leveraged ETFs (TQQQ, SOXL, ...) are part of the universe. The old
   # predictive pipeline excluded them (volatility decay skewed cross-ticker
   # stats); the descriptive model just reports what each ticker printed and

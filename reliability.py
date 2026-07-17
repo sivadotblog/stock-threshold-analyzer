@@ -17,9 +17,17 @@ up offers many +N% harvests per year. What matters is:
 
 Consecutive down legs are never treated as failures — a stock that fell -10%
 three times and then recovered is oscillation richness, not three failed
-trades. There are no eligibility gates, Wilson bounds, or recovery-time
-statistics: per-dip "time to recover" is ill-defined when dips overlap, and
-everything subjective is left to the chart explorer.
+trades. There are no Wilson bounds or recovery-time statistics: per-dip "time
+to recover" is ill-defined when dips overlap, and everything subjective is
+left to the chart explorer.
+
+One deliberate gate exists besides the trend filter: the *parabolic* flag.
+A ticker that spiked (e.g. 3x+) from its trailing 12-month low anywhere in
+the window (CIFR $3 -> $25) prints lots of legs from a one-way regime shift,
+not a repeatable dip-cycle — its oscillation history is unreliable, so it is
+flagged (``parabolic``) and ranked below steady oscillators like QQQ/SPY.
+``max_run_up_pct`` (the largest gain from any trailing-window low) is always
+reported so the evidence behind the flag is never hidden.
 
 Pure functions only (no network) so the math is unit-testable in isolation.
 """
@@ -32,6 +40,8 @@ import numpy as np
 import pandas as pd
 
 DEFAULT_RECENT_WINDOW_DAYS = 30
+DEFAULT_PARABOLIC_WINDOW_DAYS = 365
+DEFAULT_PARABOLIC_MAX_RUN_UP_PCT = 200.0
 
 # The LAST signal = direction of the latest threshold event, nothing more. A
 # down leg means price printed -N% from the last anchor (a dip you could buy);
@@ -95,10 +105,30 @@ def _cagr_and_max_drawdown(close: np.ndarray, span_days: int) -> tuple[float, fl
     return cagr, max_drawdown
 
 
+def _max_run_up(prices: pd.DataFrame, window_days: int) -> float:
+    """Largest % gain from the lowest close in any trailing ``window_days``
+    window: max over t of close[t] / min(close[t-window .. t]) - 1, as a
+    percentage. Daily closes, no averaging — catches a spike anywhere in the
+    lookback even if it later plateaued or retraced.
+    """
+    closes = pd.Series(prices["close"].to_numpy(dtype=float),
+                       index=pd.DatetimeIndex(prices["date"]))
+    # Some cached feeds deliver out-of-order rows; time-based rolling demands
+    # a monotonic index.
+    closes = closes.sort_index()
+    rolling_low = closes.rolling(f"{window_days}D").min()
+    ratio = (closes / rolling_low).max()
+    if not np.isfinite(ratio):
+        return 0.0
+    return float((ratio - 1.0) * 100)
+
+
 def compute_oscillation_summary(prices: pd.DataFrame,
                                 threshold_pct: float = 10.0,
                                 as_of: date | None = None,
-                                recent_window_days: int = DEFAULT_RECENT_WINDOW_DAYS) -> dict:
+                                recent_window_days: int = DEFAULT_RECENT_WINDOW_DAYS,
+                                parabolic_window_days: int = DEFAULT_PARABOLIC_WINDOW_DAYS,
+                                parabolic_max_run_up_pct: float = DEFAULT_PARABOLIC_MAX_RUN_UP_PCT) -> dict:
     """One ticker's oscillation summary over the supplied price window.
 
     Parameters
@@ -110,7 +140,10 @@ def compute_oscillation_summary(prices: pd.DataFrame,
 
     Returns a dict with the leg counts, ``up_legs_per_year`` (the ranking key:
     completed +N% recoveries per year of data), ``trend_positive`` (drift
-    filter), CAGR / max-drawdown context, the current streak, the last and
+    filter), ``max_run_up_pct`` / ``parabolic`` (spike gate: largest gain from
+    a trailing ``parabolic_window_days`` low; flagged when it reaches
+    ``parabolic_max_run_up_pct``), CAGR / max-drawdown context, the current
+    streak, the last and
     previous signals (direction/date/price of the latest two events — these
     are history, not realtime states), ``target_price`` (where the opposite
     signal would fire: a BUY at 100 harvests at SELL >= 110), and
@@ -125,6 +158,8 @@ def compute_oscillation_summary(prices: pd.DataFrame,
         "net_return_pct": 0.0,
         "cagr_pct": 0.0,
         "max_drawdown_pct": 0.0,
+        "max_run_up_pct": 0.0,
+        "parabolic": False,
         "trend_positive": False,
         "current_streak": 0,
         "last_event_date": None,
@@ -171,6 +206,10 @@ def compute_oscillation_summary(prices: pd.DataFrame,
     out["cagr_pct"] = round(cagr * 100, 2)
     out["max_drawdown_pct"] = round(max_dd * 100, 2)
     out["trend_positive"] = bool(net_return > 0)
+
+    run_up = _max_run_up(prices, parabolic_window_days)
+    out["max_run_up_pct"] = round(run_up, 2)
+    out["parabolic"] = bool(run_up >= parabolic_max_run_up_pct)
 
     if len(ev):
         dirs = ev["direction"].tolist()

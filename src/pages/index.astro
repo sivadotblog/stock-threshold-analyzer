@@ -13,7 +13,10 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     oscillate a lot while net-trending up. Every completed <strong>+10% leg</strong>
     (anchor-reset rule) is one harvestable recovery, so the ranking key is
     <strong>positive oscillations per year</strong> among tickers whose lookback drift is
-    positive — downtrenders are kept but greyed and ranked last. Consecutive down-legs are
+    positive — downtrenders are kept but greyed and ranked last. We want oscillators, not
+    parabolic runners: a ticker that spiked 3x+ from its trailing 12-month low (🚀) printed
+    its legs in a one-way regime shift, so it is greyed and ranked below every steady
+    candidate. Consecutive down-legs are
     never penalized: a stock that dipped three times before recovering is oscillation
     richness, not failure. <strong>Signal</strong> is simply the direction of the latest
     ±10% event (down leg = <code>BUY</code>, up leg = <code>SELL</code>); whether to act
@@ -109,6 +112,17 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
           <td><strong>MaxDD%</strong></td>
           <td>Volatility context: worst peak-to-trough drawdown over the lookback. The
           price of admission for the oscillations.</td>
+        </tr>
+        <tr>
+          <td><strong>1y run↑%</strong></td>
+          <td>The parabolic gate: the largest gain from the lowest close in any trailing
+          12-month window over the lookback — daily closes vs. the trailing low, no
+          averaging. QQQ/SPY sit around +40%; CIFR's $3 → $25 spike is +700%. At
+          <strong>+200% (3x) or more</strong> the ticker is flagged 🚀, greyed, and ranked
+          below every steady trend-positive name: those ±10% legs came from a one-way
+          regime shift, not a repeatable dip-cycle, so the oscillation history can't be
+          trusted to repeat. The threshold is configurable
+          (<code>analyzer.parabolic_max_run_up_pct</code>).</td>
         </tr>
         <tr>
           <td><strong>Streak</strong></td>

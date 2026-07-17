@@ -123,7 +123,8 @@ def cmd_analyze(args, cfg) -> int:
         print(f"wrote {ev_path} ({len(ev_all)} events)")
 
         rows = compute_leaderboard_rows(
-            prices, categories, as_of, n, a["recent_window_days"])
+            prices, categories, as_of, n, a["recent_window_days"],
+            a["parabolic_window_days"], a["parabolic_max_run_up_pct"])
         m_path = OUTPUT_DIR / f"summary_{n:g}pct.csv"
         pd.DataFrame(rows).drop(columns=["recent_events"]).to_csv(m_path, index=False)
         print(f"wrote {m_path} ({len(rows)} tickers)")
@@ -139,19 +140,23 @@ def cmd_leaderboard(args, cfg) -> int:
     as_of = _as_of(prices)
 
     rows = compute_leaderboard_rows(
-        prices, categories, as_of, n, a["recent_window_days"])
+        prices, categories, as_of, n, a["recent_window_days"],
+        a["parabolic_window_days"], a["parabolic_max_run_up_pct"])
     payload = build_leaderboard(
         rows, n, args.years, universe_size=len(tickers),
         generated_at=datetime.now(timezone.utc).isoformat(timespec="seconds"))
 
     hdr = (f"{'#':>3} {'ticker':<7}{'signal':<7}{'up/yr':>7}{'n▲':>5}{'n▼':>5}"
-           f"{'cagr%':>8}{'maxDD%':>8}{'streak':>7}  trend")
+           f"{'cagr%':>8}{'maxDD%':>8}{'run↑%':>8}{'streak':>7}  trend")
     print("\n" + hdr + "\n" + "-" * len(hdr))
     for r in payload["results"][:25]:
+        trend = ("DOWN" if not r["trend_positive"]
+                 else "PARA" if r["parabolic"] else "up")
         print(f"{r['rank']:>3} {r['ticker']:<7}{r['signal']:<7}"
               f"{r['up_legs_per_year']:>7.1f}{r['n_up']:>5}{r['n_down']:>5}"
               f"{r['cagr_pct']:>8.1f}{r['max_drawdown_pct']:>8.1f}"
-              f"{r['current_streak']:>7}  {'up' if r['trend_positive'] else 'DOWN'}")
+              f"{r['max_run_up_pct']:>8.1f}"
+              f"{r['current_streak']:>7}  {trend}")
 
     OUTPUT_DIR.mkdir(exist_ok=True)
     _write_json(SITE_DATA_DIR / "bullish_screen.json", payload)

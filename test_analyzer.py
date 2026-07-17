@@ -34,6 +34,24 @@ def declining_prices(n=400):
     return make_prices(100.0 * 0.995 ** np.arange(n))
 
 
+def parabolic_prices():
+    """CIFR-shaped: ~flat around 100 for a year, then ~5x in six months with
+    wiggles big enough to print plenty of ±10% legs along the way."""
+    t = np.arange(260)
+    flat = 100.0 + 8.0 * np.sin(2 * np.pi * t / 40)
+    ramp = flat[-1] * 1.013 ** np.arange(1, 131)          # ~5.3x in ~6 months
+    wiggle = 1 + 0.12 * np.sin(2 * np.pi * np.arange(1, 131) / 20)
+    return make_prices(np.concatenate([flat, ramp * wiggle]))
+
+
+def steady_grower_prices():
+    """TQQQ-shaped: ~+40%/yr drift with ±12% swings — strong but not
+    parabolic; the worst 12-month run-up stays well under 200%."""
+    t = np.arange(771)
+    drift = 100.0 * 1.0014 ** t
+    return make_prices(drift * (1 + 0.12 * np.sin(2 * np.pi * t / 40)))
+
+
 # Hand-crafted mixed path with fully known events:
 #   d0 100 start | d1 89 down | d2 85 | d3 100 up | d4 88 down | d5 77 down
 #   d6 86 up | d7 84
@@ -152,6 +170,39 @@ def test_recent_events_window():
 
 
 # ---------------------------------------------------------------------------
+# parabolic gate
+# ---------------------------------------------------------------------------
+
+def test_parabolic_spike_is_flagged():
+    s = compute_oscillation_summary(parabolic_prices(), threshold_pct=10.0)
+    assert s["parabolic"] is True
+    assert s["max_run_up_pct"] > 300            # ~5x from the flat-year lows
+    assert s["trend_positive"] is True          # still net-up: flagged, not a downtrender
+    assert s["n_up"] > 0                        # the spike printed legs — that's the problem
+
+
+def test_steady_grower_not_flagged():
+    s = compute_oscillation_summary(steady_grower_prices(), threshold_pct=10.0)
+    assert s["parabolic"] is False
+    assert 0 < s["max_run_up_pct"] < 200
+    assert s["trend_positive"] is True
+
+
+def test_parabolic_cap_is_configurable():
+    prices = steady_grower_prices()
+    strict = compute_oscillation_summary(prices, threshold_pct=10.0,
+                                         parabolic_max_run_up_pct=50.0)
+    assert strict["parabolic"] is True          # same data, stricter cap
+
+
+def test_sine_oscillator_run_up_stays_small():
+    s = compute_oscillation_summary(sine_prices(), threshold_pct=10.0)
+    # 90..110 range: worst run-up from a trailing low is ~22%
+    assert s["max_run_up_pct"] < 30
+    assert s["parabolic"] is False
+
+
+# ---------------------------------------------------------------------------
 # leaderboard ordering
 # ---------------------------------------------------------------------------
 
@@ -175,6 +226,22 @@ def test_leaderboard_positives_rank_above_downtrenders():
                                 generated_at="2026-07-14T00:00:00")
     assert payload["metric"] == "up_legs_per_year"
     assert [r["rank"] for r in payload["results"]] == [1, 2, 3]
+
+
+def test_leaderboard_parabolic_ranks_below_steady_above_downtrenders():
+    prices = {
+        "PARA": parabolic_prices(),             # trend-positive but parabolic
+        "OSC": sine_prices(),                   # steady oscillator
+        "DEC": declining_prices(),              # downtrender
+    }
+    as_of = max(p["date"].iloc[-1] for p in prices.values())
+    rows = compute_leaderboard_rows(prices, {}, as_of, 10.0, 30)
+    tickers = [r["ticker"] for r in rows]
+    # PARA prints far more legs/yr than OSC, yet the flag demotes it
+    assert tickers == ["OSC", "PARA", "DEC"]
+    by_ticker = {r["ticker"]: r for r in rows}
+    assert by_ticker["PARA"]["parabolic"] is True
+    assert by_ticker["OSC"]["parabolic"] is False
 
 
 def test_leaderboard_drops_zero_event_tickers():

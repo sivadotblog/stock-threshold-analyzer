@@ -27,8 +27,9 @@
   // ---- Scatter chart ----
   function renderScatter(el, results) {
     // Candidates only: downtrenders can print many up-legs while bleeding out,
-    // which would make them look attractive on this chart.
-    const candidates = results.filter((r) => r.trend_positive);
+    // and parabolic runners print legs from a one-way spike — both would look
+    // attractive on this chart without being repeatable dip-cyclers.
+    const candidates = results.filter((r) => r.trend_positive && !r.parabolic);
     const others = candidates.filter((r) => r.ticker !== HIGHLIGHT);
     const zeta = candidates.find((r) => r.ticker === HIGHLIGHT);
 
@@ -143,8 +144,12 @@
     const tickerFmt = (cell) => {
       const r = cell.getRow().getData();
       const t = cell.getValue();
-      const warn = r.trend_positive ? "" :
-        ` <span title="net downtrend over the lookback — not a candidate" style="cursor:help;">📉</span>`;
+      let warn = "";
+      if (!r.trend_positive) {
+        warn = ` <span title="net downtrend over the lookback — not a candidate" style="cursor:help;">📉</span>`;
+      } else if (r.parabolic) {
+        warn = ` <span title="parabolic run-up (${fmt(r.max_run_up_pct, 0)}% from its trailing 12-month low) — legs came from a one-way spike, not a repeatable dip-cycle; ranked below steady oscillators" style="cursor:help;">🚀</span>`;
+      }
       return `<a href="https://finance.yahoo.com/quote/${t}" target="_blank" rel="noopener" style="font-weight:700;color:var(--accent,#0284c7);">${t}</a>${warn}`;
     };
 
@@ -171,6 +176,14 @@
         { title: "Since%", field: "pct_since_signal", sorter: "number", hozAlign: "right", width: 85, formatter: num(1) },
         { title: "CAGR%", field: "cagr_pct", sorter: "number", hozAlign: "right", width: 85, formatter: num(1) },
         { title: "MaxDD%", field: "max_drawdown_pct", sorter: "number", hozAlign: "right", width: 90, formatter: num(1) },
+        { title: "1y run↑%", field: "max_run_up_pct", sorter: "number", hozAlign: "right", width: 95,
+          formatter: (cell) => {
+            const r = cell.getRow().getData();
+            const v = fmt(cell.getValue(), 0);
+            return r.parabolic
+              ? `<span style="color:var(--down,#c2410c);font-weight:700;">${v} 🚀</span>`
+              : v;
+          } },
         { title: "Streak", field: "current_streak", sorter: "number", hozAlign: "right", width: 90, formatter: streakFmt },
         { title: "Recent Δ", field: "recent_events", hozAlign: "center", width: 150, formatter: recentEventsFmt },
         { title: "Category", field: "category", sorter: "string", minWidth: 110,
@@ -179,7 +192,7 @@
       rowFormatter: (row) => {
         const d = row.getData();
         const el = row.getElement();
-        if (!d.trend_positive) {
+        if (!d.trend_positive || d.parabolic) {
           el.style.opacity = "0.45";
         }
         if (d.ticker === HIGHLIGHT) {
@@ -227,11 +240,13 @@
       .then(data => {
         const results = data.results || [];
         if (metaEl) {
-          const nPos = results.filter((r) => r.trend_positive).length;
+          const nPos = results.filter((r) => r.trend_positive && !r.parabolic).length;
+          const nPara = results.filter((r) => r.trend_positive && r.parabolic).length;
           metaEl.innerHTML =
             `Screened <b>${data.universe_size}</b> tickers @ ±${data.threshold_pct}% ` +
-            `over ${data.lookback_years}y — <b>${nPos}</b> trend-positive candidates, ` +
-            `${results.length - nPos} downtrenders (greyed). ` +
+            `over ${data.lookback_years}y — <b>${nPos}</b> steady trend-positive candidates, ` +
+            `${nPara} parabolic runners (🚀, ranked down), ` +
+            `${results.filter((r) => !r.trend_positive).length} downtrenders (greyed). ` +
             `<small>Generated ${new Date(data.generated_at).toLocaleString()}.</small>`;
         }
         renderScatter(scatterEl, results);
