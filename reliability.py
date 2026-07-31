@@ -207,8 +207,10 @@ def compute_oscillation_summary(prices: pd.DataFrame,
     event — a BUY at 100 sets the next trigger at SELL >= 110; deliberately
     not called a "signal": it is a level to compare against the current
     price, not a recommendation — whether and when to act is the investor's
-    call), and ``recent_events`` (every event in the trailing window, oldest
-    first).
+    call), ``pct_to_action`` (signed % from current_price to action_price —
+    negative on a BUY row, positive on a SELL row, so sorting by it surfaces
+    tickers closest to their next threshold event), and ``recent_events``
+    (every event in the trailing window, oldest first).
     """
     out = {
         "n_up": 0,
@@ -237,6 +239,7 @@ def compute_oscillation_summary(prices: pd.DataFrame,
         "current_price": 0.0,
         "action_side": None,
         "action_price": None,
+        "pct_to_action": None,
         "recent_events": [],
     }
 
@@ -341,6 +344,14 @@ def compute_oscillation_summary(prices: pd.DataFrame,
         else:
             out["action_side"] = SIGNAL_BUY
             out["action_price"] = round(anchor_price * (1 - threshold_pct / 100), 4)
+
+        # How far current_price sits from action_price, signed so it always
+        # reads as "price must move this much to trigger": negative on a BUY
+        # row (price needs to fall), positive on a SELL row (price needs to
+        # rise). Sorting by this surfaces tickers closest to their next
+        # threshold event.
+        out["pct_to_action"] = round(
+            (out["action_price"] - out["current_price"]) / out["current_price"] * 100, 2)
 
     window_start = as_of - timedelta(days=recent_window_days)
     in_window = ev[(ev["date"].dt.date > window_start) & (ev["date"].dt.date <= as_of)]

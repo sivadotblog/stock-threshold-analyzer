@@ -88,6 +88,13 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
           reaches its Action price; whether and when to act is your decision.</td>
         </tr>
         <tr>
+          <td><strong>% Needed</strong></td>
+          <td>How far <strong>Price</strong> has to move to reach <strong>Action</strong>,
+          signed: negative on a BUY row (price needs to fall), positive on a SELL row
+          (price needs to rise). Click the column header to sort — the names closest to
+          0% are closest to their next threshold event.</td>
+        </tr>
+        <tr>
           <td><strong>Net legs/yr</strong></td>
           <td>The ranking key: (up legs − down legs) per year of data. Rewards both a
           favorable up/down ratio and a high leg count — a ticker that rarely dips but

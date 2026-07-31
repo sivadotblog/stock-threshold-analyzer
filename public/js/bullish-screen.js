@@ -44,7 +44,7 @@
       `CAGR: ${fmt(r.cagr_pct, 1)}%/yr<br>` +
       `MaxDD: ${fmt(r.max_drawdown_pct, 1)}%<br>` +
       `price: ${fmt(r.current_price, 2)}` +
-      (r.action_side ? ` — next: ${r.action_side} ${r.action_side === "SELL" ? "≥" : "≤"} ${fmt(r.action_price, 2)}` : "");
+      (r.action_side ? ` — next: ${r.action_side} ${r.action_side === "SELL" ? "≥" : "≤"} ${fmt(r.action_price, 2)} (${fmt(r.pct_to_action, 1)}% away)` : "");
 
     const traces = [{
       type: "scattergl", mode: "markers",
@@ -150,6 +150,14 @@
         { title: "Ticker", field: "ticker", sorter: "string", width: 105, formatter: tickerFmt },
         { title: "Price", field: "current_price", sorter: "number", hozAlign: "right", width: 90, formatter: num(2) },
         { title: "Action", field: "action_price", sorter: "number", hozAlign: "left", width: 130, formatter: actionFmt },
+        { title: "% Needed", field: "pct_to_action", sorter: "number", hozAlign: "right", width: 100,
+          formatter: (cell) => {
+            const r = cell.getRow().getData();
+            const v = cell.getValue();
+            if (v == null) return `<span style="opacity:0.35;">—</span>`;
+            const color = r.action_side === "SELL" ? "var(--down,#c2410c)" : "var(--up,#0369a1)";
+            return `<span title="price must move this much to reach the Action level" style="color:${color};font-weight:600;cursor:help;">${v > 0 ? "+" : ""}${fmt(v, 1)}%</span>`;
+          } },
         { title: "Net legs/yr", field: "net_legs_per_year", sorter: "number", hozAlign: "right", width: 110,
           formatter: (cell) => `<b>${fmt(cell.getValue(), 1)}</b>` },
         { title: "Net dips/yr", field: "net_dips_per_year", sorter: "number", hozAlign: "right", width: 105,

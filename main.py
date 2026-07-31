@@ -152,7 +152,7 @@ def cmd_leaderboard(args, cfg) -> int:
         rows, n, args.years, universe_size=len(tickers),
         generated_at=datetime.now(timezone.utc).isoformat(timespec="seconds"))
 
-    hdr = (f"{'#':>3} {'ticker':<7}{'price':>9}{'action':<14}{'netlegs':>8}{'netdips':>8}{'P(rec)':>7}"
+    hdr = (f"{'#':>3} {'ticker':<7}{'price':>9}{'action':<14}{'need%':>7}{'netlegs':>8}{'netdips':>8}{'P(rec)':>7}"
            f"{'n▲':>5}{'n▼':>5}"
            f"{'cagr%':>8}{'maxDD%':>8}  trend")
     print("\n" + hdr + "\n" + "-" * len(hdr))
@@ -165,7 +165,9 @@ def cmd_leaderboard(args, cfg) -> int:
                else f"{'—':>7}")
         action = (f"{r['action_side']} @ {r['action_price']:.2f}"
                   if r["action_side"] else "—")
-        print(f"{r['rank']:>3} {r['ticker']:<7}{r['current_price']:>9.2f}{action:<14}"
+        need = (f"{r['pct_to_action']:>+7.1f}" if r["pct_to_action"] is not None
+                else f"{'—':>7}")
+        print(f"{r['rank']:>3} {r['ticker']:<7}{r['current_price']:>9.2f}{action:<14}{need}"
               f"{r['net_legs_per_year']:>8.1f}{r['net_dips_per_year']:>8.1f}{rec}"
               f"{r['n_up']:>5}{r['n_down']:>5}"
               f"{r['cagr_pct']:>8.1f}{r['max_drawdown_pct']:>8.1f}  {trend}")

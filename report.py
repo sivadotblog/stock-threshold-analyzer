@@ -23,6 +23,9 @@ signals routinely ride deep underwater before harvesting. Each row carries
 ``current_price`` (last close) and ``action_side``/``action_price`` (the
 next price level that would print a threshold event) — deliberately not a
 recommendation, just a level to compare against the current price.
+``pct_to_action`` is the signed distance between them (negative on a BUY
+row, positive on a SELL row) so the leaderboard can be sorted by proximity
+to its next event, independent of the rank order above.
 
 Pure functions; I/O lives in the CLI.
 """

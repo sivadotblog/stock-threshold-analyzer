@@ -145,6 +145,22 @@ def test_action_price_after_down_leg():
     assert s["action_price"] == pytest.approx(89 * 1.1, abs=0.01)
 
 
+def test_pct_to_action_sign_convention():
+    # BUY row: current_price (84) sits above action_price (77.4) -> negative,
+    # price must fall to trigger.
+    buy = compute_oscillation_summary(make_prices(MIXED_CLOSES), threshold_pct=10.0)
+    assert buy["pct_to_action"] == pytest.approx(
+        (77.4 - 84) / 84 * 100, abs=0.01)
+    assert buy["pct_to_action"] < 0
+
+    # SELL row: current_price (88) sits below action_price (97.9) -> positive,
+    # price must rise to trigger.
+    sell = compute_oscillation_summary(make_prices([100, 89, 88]), threshold_pct=10.0)
+    assert sell["pct_to_action"] == pytest.approx(
+        (97.9 - 88) / 88 * 100, abs=0.01)
+    assert sell["pct_to_action"] > 0
+
+
 def test_nan_closes_are_dropped():
     """A half-formed Yahoo bar (NaN close) must not poison the stats or leak
     NaN into the payload (NaN is invalid JSON and broke the site)."""
@@ -163,6 +179,7 @@ def test_no_events_no_action():
                                     threshold_pct=10.0)
     assert s["n_events"] == 0
     assert s["action_side"] is None
+    assert s["pct_to_action"] is None
     assert s["current_price"] == 102.0          # still reported with zero events
     assert s["up_legs_per_year"] == 0.0
 
