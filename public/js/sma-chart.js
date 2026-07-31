@@ -321,6 +321,13 @@
       .map((t) => `<option value="${t.ticker}">${t.ticker} — ${t.name}</option>`)
       .join("");
 
+    // Deep link from the leaderboard: /chart/?ticker=XXXX preselects the row.
+    const requested = new URLSearchParams(window.location.search)
+      .get("ticker")?.toUpperCase();
+    if (requested && manifest.tickers.some((t) => t.ticker === requested)) {
+      tickerSelect.value = requested;
+    }
+
     const filterInput = document.getElementById("sma-ticker-filter");
     if (filterInput) {
       filterInput.addEventListener("input", () => {

@@ -7,21 +7,25 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     <link rel="stylesheet" href="https://unpkg.com/tabulator-tables@6.3.0/dist/css/tabulator_simple.min.css" />
   </Fragment>
 
-  <h1>Oscillation Leaderboard — +10% harvests per year</h1>
+  <h1>Oscillation Leaderboard — reliable dip-cyclers, ranked</h1>
   <p>
-    The goal is simple compounding: repeated <strong>+10% harvests</strong> on stocks that
-    oscillate a lot while net-trending up. Every completed <strong>+10% leg</strong>
-    (anchor-reset rule) is one harvestable recovery, so the ranking key is
-    <strong>positive oscillations per year</strong> among tickers whose lookback drift is
-    positive — downtrenders are kept but greyed and ranked last. We want oscillators, not
-    parabolic runners: a ticker that spiked 3x+ from its trailing 12-month low (🚀) printed
-    its legs in a one-way regime shift, so it is greyed and ranked below every steady
-    candidate. Consecutive down-legs are
-    never penalized: a stock that dipped three times before recovering is oscillation
-    richness, not failure. <strong>Signal</strong> is simply the direction of the latest
-    ±10% event (down leg = <code>BUY</code>, up leg = <code>SELL</code>); whether to act
-    is your decision — nothing here tracks trades. Investigate any ticker in the chart
-    explorer.
+    The goal is simple compounding: repeated <strong>±10% round trips</strong> on stocks
+    that oscillate reliably while net-trending up. The ranking key is
+    <strong>net legs/yr</strong> — (up legs − down legs) per year of data — because a good
+    oscillator needs both a favorable up/down ratio (quality) and a high leg count
+    (frequency); neither alone is enough. Every row also shows its <strong>current
+    price</strong> and <strong>action price</strong> (the next level that would print a
+    threshold event) so you can judge the gap yourself, rather than a computed
+    "signal" telling you what to do. Four gates keep the ranking honest without a
+    weighted score: downtrenders (📉, negative drift) rank last; parabolic runners
+    (🚀, spiked 3x+ from a trailing 12-month low within the last 2 years — one-way regime
+    shift, not a repeatable cycle) rank below steady names; dip-chainers (⛓️, a run of
+    5+ consecutive down legs, or two-plus runs of 4+ — BUY signals that ride deep
+    underwater) rank between the two; thin histories (🌱, fewer than 10 completed legs)
+    rank just below the proven names. Consecutive down-legs are never treated as
+    failures on their own — a stock that dipped three times before recovering is
+    oscillation richness, until it crosses one of those gates. Investigate any ticker in
+    the chart explorer.
   </p>
 
   <p id="bullish-meta"><em>Loading screen…</em></p>
@@ -47,8 +51,8 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       <input type="number" id="f-rank-max" placeholder="e.g. 100" min="1" />
     </div>
     <div class="tb-filter-group">
-      <label for="f-osc-min">Up-legs/yr ≥</label>
-      <input type="number" id="f-osc-min" placeholder="e.g. 8" step="0.5" min="0" />
+      <label for="f-osc-min">Net legs/yr ≥</label>
+      <input type="number" id="f-osc-min" placeholder="e.g. 2" step="0.5" min="0" />
     </div>
     <div class="tb-filter-group">
       <label>CAGR%</label>
@@ -71,36 +75,37 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       <thead><tr><th>Field</th><th>What it means</th></tr></thead>
       <tbody>
         <tr>
-          <td><strong>Last signal / Prev</strong></td>
-          <td>The two most recent ±10% threshold events — direction, price, and date.
-          These are <em>history, not realtime states</em>: <code>BUY @ 100 · 6/10</code>
-          means a −10% leg completed at $100 on June 10 and nothing has triggered since.
-          <code>SELL</code>: a +10% leg (harvest) completed. Note a SELL is anchor-based,
-          not entry-based: if interim dips reset the anchor lower, a SELL can fire below
-          <em>your</em> entry +10% — judge it against your own position.</td>
+          <td><strong>Price</strong></td>
+          <td>Current price — the last available close.</td>
         </tr>
         <tr>
-          <td><strong>Target</strong></td>
-          <td>Where the opposite signal fires from the last event's price. After a
-          <code>BUY @ 100</code> the harvest is <code>SELL ≥ 110</code>; after a
-          <code>SELL @ 110</code> the next dip trigger is <code>BUY ≤ 99</code>.
-          (Another −10% leg below a BUY also resets the anchor — and the target — lower.)</td>
+          <td><strong>Action</strong></td>
+          <td>The next price level that would print a ±10% threshold event, based on the
+          last completed leg's price (not today's price). After a down leg at 100 the next
+          event is <code>SELL ≥ 110</code>; after an up leg at 110 the next event is
+          <code>BUY ≤ 99</code>. This is a level to compare against <strong>Price</strong>,
+          deliberately not a recommendation — a stock can be a perfectly good buy before it
+          reaches its Action price; whether and when to act is your decision.</td>
         </tr>
         <tr>
-          <td><strong>Up-legs/yr</strong></td>
-          <td>The ranking key: completed +10% legs per year of data. Each up-leg is one
-          realized, harvestable +10% recovery — no pairing with dips, no outcome
-          classification, so overlapping dip clusters can't distort it.</td>
+          <td><strong>Net legs/yr</strong></td>
+          <td>The ranking key: (up legs − down legs) per year of data. Rewards both a
+          favorable up/down ratio and a high leg count — a ticker that rarely dips but
+          barely moves (e.g. a slow, "safe" oscillator) scores low here just as a ticker
+          that chops constantly near 1:1 does; the surplus is what compounds.</td>
+        </tr>
+        <tr>
+          <td><strong>Net dips/yr / P(rec)</strong></td>
+          <td>Context on dip reliability: down→up transitions minus down→down transitions
+          per year, and P(recovery | dip) — the fraction of dips that resolved immediately
+          rather than deepening into another down leg. A ticker can rank well on net legs/yr
+          while still chaining dips often (worth checking before sizing a position).</td>
         </tr>
         <tr>
           <td><strong>n▲ / n▼</strong></td>
-          <td>Raw counts of +10% and −10% legs over the window — the evidence behind the
-          rate, never hidden. A young listing can show a high rate on few legs; check n▲.</td>
-        </tr>
-        <tr>
-          <td><strong>Since%</strong></td>
-          <td>How far price has moved since the signal event's close. On a BUY row, a
-          negative value means the dip has deepened further below the trigger.</td>
+          <td>Raw counts of +10% and −10% legs over the window — the evidence behind every
+          rate above, never hidden. A young listing can show a strong rate on few legs;
+          check n▲ (also see 🌱 thin-history flag below +10 legs).</td>
         </tr>
         <tr>
           <td><strong>CAGR%</strong></td>
@@ -118,15 +123,28 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
           <td>The parabolic gate: the largest gain from the lowest close in any trailing
           12-month window over the lookback — daily closes vs. the trailing low, no
           averaging. QQQ/SPY sit around +40%; CIFR's $3 → $25 spike is +700%. At
-          <strong>+200% (3x) or more</strong> the ticker is flagged 🚀, greyed, and ranked
-          below every steady trend-positive name: those ±10% legs came from a one-way
-          regime shift, not a repeatable dip-cycle, so the oscillation history can't be
-          trusted to repeat. The threshold is configurable
-          (<code>analyzer.parabolic_max_run_up_pct</code>).</td>
+          <strong>+200% (3x) or more within the last 2 years</strong> the ticker is flagged
+          🚀, greyed, and ranked below every steady trend-positive name: those ±10% legs
+          came from a one-way regime shift, not a repeatable dip-cycle. A spike older than
+          2 years stays on the record but no longer demotes — a ticker that oscillated
+          cleanly since is judged on its recent behavior, not stale evidence. Thresholds
+          are configurable (<code>analyzer.parabolic_max_run_up_pct</code>,
+          <code>analyzer.parabolic_recency_days</code>).</td>
         </tr>
         <tr>
-          <td><strong>Streak</strong></td>
-          <td>Current momentum. How many consecutive ±10% threshold crossings have gone the same direction. <code>+3↑</code> = the last 3 events were all up legs. <code>-2↓</code> = last 2 were down legs.</td>
+          <td><strong>⛓️ Chained dips</strong></td>
+          <td>A ticker whose down legs chain deep makes each BUY a weak promise — capital
+          rides underwater before the harvest. Flagged (greyed, ranked between steady and
+          parabolic names) when the longest run of consecutive down legs reaches 5
+          (~−41% compounded from the first leg), or when runs of 4+ have happened twice or
+          more (depth once is an episode; repeatedly is a pattern). Hover the ⛓️ badge on a
+          ticker for its worst-run depth and count.</td>
+        </tr>
+        <tr>
+          <td><strong>🌱 Thin history</strong></td>
+          <td>Fewer than 10 completed legs — not enough evidence for the rates above to
+          mean anything (a new leveraged ETF can print a flattering rate on a handful of
+          legs). Flagged and ranked just below the proven steady names.</td>
         </tr>
         <tr>
           <td><strong>Recent Δ</strong></td>

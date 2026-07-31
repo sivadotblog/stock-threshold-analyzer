@@ -1,10 +1,12 @@
 /* Oscillation leaderboard visualizer — Tabulator edition (v3)
  *
- * Ranking: up_legs_per_year (positive oscillations per year — each completed
- * +10% leg is one harvestable recovery) among trend-positive tickers.
- * Downtrenders are kept but greyed and ranked last. Signal is the direction
- * of the latest threshold event: down leg = BUY, up leg = SELL. Stateless —
- * acting on it is the investor's decision; there is no trade tracking.
+ * Ranking: net_legs_per_year ((n_up - n_down) / years — surplus of harvests
+ * over dips) among trend-positive tickers. Downtrenders are kept but greyed
+ * and ranked last. Each row shows current_price (last close) and
+ * action_side/action_price (the next price level that would print a
+ * threshold event) — deliberately not a "signal": it's a level to compare
+ * against the current price, not a recommendation. Stateless — there is no
+ * trade tracking.
  */
 (function () {
   "use strict";
@@ -15,35 +17,39 @@
     return window.__DATA_BASE__ || "/stock-threshold-analyzer/data";
   }
 
-  function fmt(n, d) {
-    return (n === null || n === undefined || isNaN(n)) ? "—" : Number(n).toFixed(d);
+  function siteBase() {
+    return dataBase().replace(/\/data$/, "");
   }
 
-  function streakLabel(n) {
-    if (!n) return "—";
-    return (n > 0 ? "+" : "") + n + (n > 0 ? "↑" : "↓");
+  function fmt(n, d) {
+    return (n === null || n === undefined || isNaN(n)) ? "—" : Number(n).toFixed(d);
   }
 
   // ---- Scatter chart ----
   function renderScatter(el, results) {
     // Candidates only: downtrenders can print many up-legs while bleeding out,
-    // and parabolic runners print legs from a one-way spike — both would look
-    // attractive on this chart without being repeatable dip-cyclers.
-    const candidates = results.filter((r) => r.trend_positive && !r.parabolic);
+    // parabolic runners print legs from a one-way spike, dip-chainers inflate
+    // their leg count by riding deep BUY chains, and thin histories have no
+    // denominator — all would look attractive here without being repeatable
+    // dip-cyclers.
+    const candidates = results.filter((r) =>
+      r.trend_positive && !r.parabolic && !r.chained_dips && !r.thin_history);
     const others = candidates.filter((r) => r.ticker !== HIGHLIGHT);
     const zeta = candidates.find((r) => r.ticker === HIGHLIGHT);
 
     const hover = (r) =>
       `<b>${r.ticker}</b> &nbsp;#${r.rank}<br>` +
-      `up-legs/yr: <b>${fmt(r.up_legs_per_year, 1)}</b> (${r.n_up}▲ / ${r.n_down}▼)<br>` +
+      `net legs/yr: <b>${fmt(r.net_legs_per_year, 1)}</b> (${r.n_up}▲ / ${r.n_down}▼)<br>` +
+      `net dips/yr: ${fmt(r.net_dips_per_year, 1)} — P(rec) ${r.recovery_rate == null ? "—" : fmt(r.recovery_rate, 2)}<br>` +
       `CAGR: ${fmt(r.cagr_pct, 1)}%/yr<br>` +
       `MaxDD: ${fmt(r.max_drawdown_pct, 1)}%<br>` +
-      `last signal: ${r.signal} @ ${fmt(r.signal_price, 2)} on ${r.last_event_date} (${fmt(r.pct_since_signal, 1)}% since)`;
+      `price: ${fmt(r.current_price, 2)}` +
+      (r.action_side ? ` — next: ${r.action_side} ${r.action_side === "SELL" ? "≥" : "≤"} ${fmt(r.action_price, 2)}` : "");
 
     const traces = [{
       type: "scattergl", mode: "markers",
       x: others.map((r) => r.cagr_pct),
-      y: others.map((r) => r.up_legs_per_year),
+      y: others.map((r) => r.net_legs_per_year),
       text: others.map(hover),
       hoverinfo: "text",
       marker: {
@@ -65,7 +71,7 @@
     if (zeta) {
       traces.push({
         type: "scattergl", mode: "markers+text",
-        x: [zeta.cagr_pct], y: [zeta.up_legs_per_year],
+        x: [zeta.cagr_pct], y: [zeta.net_legs_per_year],
         text: ["ZETA"], textposition: "top center",
         textfont: { color: clrAccent, size: 13 },
         hoverinfo: "text", hovertext: [hover(zeta)],
@@ -74,9 +80,9 @@
     }
 
     Plotly.newPlot(el, traces, {
-      title: { text: "Positive oscillations vs growth (trend-positive tickers)", font: { color: clrFg } },
+      title: { text: "Net oscillation surplus vs growth (trend-positive tickers)", font: { color: clrFg } },
       xaxis: { title: "CAGR %/yr", zeroline: true, zerolinecolor: clrMuted, zerolinewidth: 1.5, gridcolor: clrBorder, color: clrFg },
-      yaxis: { title: "+10% legs per year (harvests)", gridcolor: clrBorder, color: clrFg },
+      yaxis: { title: "net legs per year (up minus down)", gridcolor: clrBorder, color: clrFg },
       hovermode: "closest",
       margin: { t: 50, r: 20, b: 55, l: 60 },
       paper_bgcolor: clrBg, plot_bgcolor: clrBg, font: { color: clrFg },
@@ -90,12 +96,6 @@
   function buildTable(el, results) {
     if (tabulatorInstance) { tabulatorInstance.destroy(); tabulatorInstance = null; }
 
-    const streakFmt = (cell) => {
-      const s = cell.getValue() || 0;
-      const color = s > 0 ? "var(--up,#0369a1)" : s < 0 ? "var(--down,#c2410c)" : "inherit";
-      return `<span style="color:${color};font-weight:700;">${streakLabel(s)}</span>`;
-    };
-
     const recentEventsFmt = (cell) => {
       const events = cell.getValue() || [];
       if (!events.length) return `<span style="opacity:0.35;">—</span>`;
@@ -108,37 +108,14 @@
       }).join(" ");
     };
 
-    const signalBadge = (s, date, price, extraTip) => {
-      if (s !== "BUY" && s !== "SELL") return `<span style="opacity:0.35;">—</span>`;
-      const buy = s === "BUY";
-      const tip = `${buy ? "-10%" : "+10%"} leg on ${date} at ${price}.` +
-                  (extraTip ? " " + extraTip : "");
-      const style = buy
-        ? "background:var(--up-bg,#e0f2fe);color:var(--up,#0369a1);"
-        : "background:var(--down-bg,#fff7ed);color:var(--down,#c2410c);";
-      return `<span title="${tip.replaceAll('"', "&quot;")}" style="font-size:0.75em;font-weight:700;padding:2px 8px;border-radius:20px;${style}">${s} @ ${fmt(price, 2)}</span>` +
-             `<span style="margin-left:6px;opacity:0.55;font-size:0.78em;">${date || ""}</span>`;
-    };
-
-    // Last signal = latest threshold event (history, not a realtime state).
-    const lastSignalFmt = (cell) => {
+    // The next price level that would print a threshold event — not a
+    // recommendation, just a level to compare against current_price.
+    const actionFmt = (cell) => {
       const r = cell.getRow().getData();
-      return signalBadge(cell.getValue(), r.last_event_date, r.signal_price,
-        `${fmt(r.pct_since_signal, 1)}% since. Whether to act is your decision.`);
-    };
-
-    const prevSignalFmt = (cell) => {
-      const r = cell.getRow().getData();
-      return signalBadge(cell.getValue(), r.prev_signal_date, r.prev_signal_price);
-    };
-
-    // Where the opposite signal fires: last BUY at 100 -> "SELL ≥ 110".
-    const targetFmt = (cell) => {
-      const r = cell.getRow().getData();
-      if (!r.target_price) return `<span style="opacity:0.35;">—</span>`;
-      const sell = r.target_side === "SELL";
+      if (!r.action_side) return `<span style="opacity:0.35;">—</span>`;
+      const sell = r.action_side === "SELL";
       const color = sell ? "var(--down,#c2410c)" : "var(--up,#0369a1)";
-      return `<span style="font-weight:600;color:${color};">${r.target_side} ${sell ? "≥" : "≤"} ${fmt(r.target_price, 2)}</span>`;
+      return `<span title="the next price level that would print a threshold event, based on the last completed leg on ${r.last_event_date || "—"}. Not a recommendation." style="font-weight:600;color:${color};cursor:help;">${r.action_side} ${sell ? "≥" : "≤"} ${fmt(r.action_price, 2)}</span>`;
     };
 
     const tickerFmt = (cell) => {
@@ -148,9 +125,14 @@
       if (!r.trend_positive) {
         warn = ` <span title="net downtrend over the lookback — not a candidate" style="cursor:help;">📉</span>`;
       } else if (r.parabolic) {
-        warn = ` <span title="parabolic run-up (${fmt(r.max_run_up_pct, 0)}% from its trailing 12-month low) — legs came from a one-way spike, not a repeatable dip-cycle; ranked below steady oscillators" style="cursor:help;">🚀</span>`;
+        warn = ` <span title="parabolic run-up (${fmt(r.recent_run_up_pct ?? r.max_run_up_pct, 0)}% from a trailing 12-month low within the last 2 years) — legs came from a one-way spike, not a repeatable dip-cycle; ranked below steady oscillators" style="cursor:help;">🚀</span>`;
+      } else if (r.chained_dips) {
+        warn = ` <span title="chained dips (worst run: ${r.max_down_streak} consecutive down legs; ${r.deep_down_runs ?? "?"} runs of 4+) — BUY signals routinely ride deep underwater before harvesting; ranked below clean oscillators" style="cursor:help;">⛓️</span>`;
+      } else if (r.thin_history) {
+        warn = ` <span title="thin history (only ${r.n_events} completed legs) — not enough evidence for the rates to mean anything; ranked below proven oscillators" style="cursor:help;">🌱</span>`;
       }
-      return `<a href="https://finance.yahoo.com/quote/${t}" target="_blank" rel="noopener" style="font-weight:700;color:var(--accent,#0284c7);">${t}</a>${warn}`;
+      const chartUrl = `${siteBase()}/chart/?ticker=${encodeURIComponent(t)}`;
+      return `<a href="${chartUrl}" target="_blank" rel="noopener" style="font-weight:700;color:var(--accent,#0284c7);">${t}</a>${warn}`;
     };
 
     const num = (d) => (cell) => fmt(cell.getValue(), d);
@@ -166,14 +148,19 @@
       columns: [
         { title: "#", field: "rank", sorter: "number", hozAlign: "right", width: 55 },
         { title: "Ticker", field: "ticker", sorter: "string", width: 105, formatter: tickerFmt },
-        { title: "Last signal", field: "signal", sorter: "string", hozAlign: "left", width: 195, formatter: lastSignalFmt },
-        { title: "Prev", field: "prev_signal", sorter: "string", hozAlign: "left", width: 195, formatter: prevSignalFmt },
-        { title: "Target", field: "target_price", sorter: "number", hozAlign: "left", width: 130, formatter: targetFmt },
-        { title: "Up-legs/yr", field: "up_legs_per_year", sorter: "number", hozAlign: "right", width: 105,
+        { title: "Price", field: "current_price", sorter: "number", hozAlign: "right", width: 90, formatter: num(2) },
+        { title: "Action", field: "action_price", sorter: "number", hozAlign: "left", width: 130, formatter: actionFmt },
+        { title: "Net legs/yr", field: "net_legs_per_year", sorter: "number", hozAlign: "right", width: 110,
           formatter: (cell) => `<b>${fmt(cell.getValue(), 1)}</b>` },
+        { title: "Net dips/yr", field: "net_dips_per_year", sorter: "number", hozAlign: "right", width: 105,
+          formatter: num(1) },
+        { title: "P(rec)", field: "recovery_rate", sorter: "number", hozAlign: "right", width: 80,
+          formatter: (cell) => {
+            const v = cell.getValue();
+            return v == null ? `<span style="opacity:0.35;">—</span>` : fmt(v, 2);
+          } },
         { title: "n▲", field: "n_up", sorter: "number", hozAlign: "right", width: 60 },
         { title: "n▼", field: "n_down", sorter: "number", hozAlign: "right", width: 60 },
-        { title: "Since%", field: "pct_since_signal", sorter: "number", hozAlign: "right", width: 85, formatter: num(1) },
         { title: "CAGR%", field: "cagr_pct", sorter: "number", hozAlign: "right", width: 85, formatter: num(1) },
         { title: "MaxDD%", field: "max_drawdown_pct", sorter: "number", hozAlign: "right", width: 90, formatter: num(1) },
         { title: "1y run↑%", field: "max_run_up_pct", sorter: "number", hozAlign: "right", width: 95,
@@ -184,7 +171,6 @@
               ? `<span style="color:var(--down,#c2410c);font-weight:700;">${v} 🚀</span>`
               : v;
           } },
-        { title: "Streak", field: "current_streak", sorter: "number", hozAlign: "right", width: 90, formatter: streakFmt },
         { title: "Recent Δ", field: "recent_events", hozAlign: "center", width: 150, formatter: recentEventsFmt },
         { title: "Category", field: "category", sorter: "string", minWidth: 110,
           formatter: (cell) => `<span style="color:var(--fg-muted,#4a5568);">${cell.getValue() || "—"}</span>` },
@@ -194,6 +180,8 @@
         const el = row.getElement();
         if (!d.trend_positive || d.parabolic) {
           el.style.opacity = "0.45";
+        } else if (d.chained_dips || d.thin_history) {
+          el.style.opacity = "0.65";
         }
         if (d.ticker === HIGHLIGHT) {
           el.style.background = "var(--accent-light,#e0f2fe)";
@@ -213,7 +201,7 @@
       const rankMax = document.getElementById("f-rank-max")?.value;
       if (rankMax) filters.push({ field: "rank", type: "<=", value: Number(rankMax) });
       const oscMin = document.getElementById("f-osc-min")?.value;
-      if (oscMin) filters.push({ field: "up_legs_per_year", type: ">=", value: Number(oscMin) });
+      if (oscMin) filters.push({ field: "net_legs_per_year", type: ">=", value: Number(oscMin) });
       const cagrMin = document.getElementById("f-cagr-min")?.value;
       if (cagrMin) filters.push({ field: "cagr_pct", type: ">=", value: Number(cagrMin) });
       const cagrMax = document.getElementById("f-cagr-max")?.value;
@@ -240,11 +228,15 @@
       .then(data => {
         const results = data.results || [];
         if (metaEl) {
-          const nPos = results.filter((r) => r.trend_positive && !r.parabolic).length;
+          const nPos = results.filter((r) => r.trend_positive && !r.parabolic && !r.chained_dips && !r.thin_history).length;
           const nPara = results.filter((r) => r.trend_positive && r.parabolic).length;
+          const nChain = results.filter((r) => r.trend_positive && !r.parabolic && r.chained_dips).length;
+          const nThin = results.filter((r) => r.trend_positive && !r.parabolic && !r.chained_dips && r.thin_history).length;
           metaEl.innerHTML =
             `Screened <b>${data.universe_size}</b> tickers @ ±${data.threshold_pct}% ` +
             `over ${data.lookback_years}y — <b>${nPos}</b> steady trend-positive candidates, ` +
+            `${nThin} thin histories (🌱, ranked down), ` +
+            `${nChain} dip-chainers (⛓️, ranked down), ` +
             `${nPara} parabolic runners (🚀, ranked down), ` +
             `${results.filter((r) => !r.trend_positive).length} downtrenders (greyed). ` +
             `<small>Generated ${new Date(data.generated_at).toLocaleString()}.</small>`;
