@@ -124,7 +124,10 @@ def cmd_analyze(args, cfg) -> int:
 
         rows = compute_leaderboard_rows(
             prices, categories, as_of, n, a["recent_window_days"],
-            a["parabolic_window_days"], a["parabolic_max_run_up_pct"])
+            a["parabolic_window_days"], a["parabolic_max_run_up_pct"],
+            a["parabolic_recency_days"], a["chained_max_down_streak"],
+            a["chained_deep_run_len"], a["chained_deep_run_count"],
+            a["min_events"])
         m_path = OUTPUT_DIR / f"summary_{n:g}pct.csv"
         pd.DataFrame(rows).drop(columns=["recent_events"]).to_csv(m_path, index=False)
         print(f"wrote {m_path} ({len(rows)} tickers)")
@@ -141,22 +144,31 @@ def cmd_leaderboard(args, cfg) -> int:
 
     rows = compute_leaderboard_rows(
         prices, categories, as_of, n, a["recent_window_days"],
-        a["parabolic_window_days"], a["parabolic_max_run_up_pct"])
+        a["parabolic_window_days"], a["parabolic_max_run_up_pct"],
+        a["parabolic_recency_days"], a["chained_max_down_streak"],
+        a["chained_deep_run_len"], a["chained_deep_run_count"],
+        a["min_events"])
     payload = build_leaderboard(
         rows, n, args.years, universe_size=len(tickers),
         generated_at=datetime.now(timezone.utc).isoformat(timespec="seconds"))
 
-    hdr = (f"{'#':>3} {'ticker':<7}{'signal':<7}{'up/yr':>7}{'n▲':>5}{'n▼':>5}"
-           f"{'cagr%':>8}{'maxDD%':>8}{'run↑%':>8}{'streak':>7}  trend")
+    hdr = (f"{'#':>3} {'ticker':<7}{'price':>9}{'action':<14}{'netlegs':>8}{'netdips':>8}{'P(rec)':>7}"
+           f"{'n▲':>5}{'n▼':>5}"
+           f"{'cagr%':>8}{'maxDD%':>8}  trend")
     print("\n" + hdr + "\n" + "-" * len(hdr))
     for r in payload["results"][:25]:
         trend = ("DOWN" if not r["trend_positive"]
-                 else "PARA" if r["parabolic"] else "up")
-        print(f"{r['rank']:>3} {r['ticker']:<7}{r['signal']:<7}"
-              f"{r['up_legs_per_year']:>7.1f}{r['n_up']:>5}{r['n_down']:>5}"
-              f"{r['cagr_pct']:>8.1f}{r['max_drawdown_pct']:>8.1f}"
-              f"{r['max_run_up_pct']:>8.1f}"
-              f"{r['current_streak']:>7}  {trend}")
+                 else "PARA" if r["parabolic"]
+                 else "CHAIN" if r["chained_dips"]
+                 else "THIN" if r["thin_history"] else "up")
+        rec = (f"{r['recovery_rate']:>7.2f}" if r["recovery_rate"] is not None
+               else f"{'—':>7}")
+        action = (f"{r['action_side']} @ {r['action_price']:.2f}"
+                  if r["action_side"] else "—")
+        print(f"{r['rank']:>3} {r['ticker']:<7}{r['current_price']:>9.2f}{action:<14}"
+              f"{r['net_legs_per_year']:>8.1f}{r['net_dips_per_year']:>8.1f}{rec}"
+              f"{r['n_up']:>5}{r['n_down']:>5}"
+              f"{r['cagr_pct']:>8.1f}{r['max_drawdown_pct']:>8.1f}  {trend}")
 
     OUTPUT_DIR.mkdir(exist_ok=True)
     _write_json(SITE_DATA_DIR / "bullish_screen.json", payload)

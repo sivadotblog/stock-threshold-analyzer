@@ -24,6 +24,39 @@ analyzer:
   # trend-positive ticker. 200 = 3x from the trailing low.
   parabolic_window_days: 365
   parabolic_max_run_up_pct: 200
+  # Only a spike within the trailing recency window demotes: DIG tripled in
+  # the 2022 oil rebound (peak run-up 285%, Apr-Jun 2022) then oscillated
+  # cleanly for 4 years — stale evidence shouldn't outrank fresh behavior.
+  # Sweep 2026-07-31: releases 11 of 76 flagged (DIG, CRWD, RCL, FSLR, EQT,
+  # META, DVN, OXY reach the steady tier; FNGG, LC, CCL land in chained).
+  parabolic_recency_days: 730
+  # Chained-dips gate: a ticker whose longest run of consecutive -N% legs
+  # reached chained_max_down_streak (NET printed 6 in a row, ~-47% compounded
+  # from the first BUY) keeps its row but is flagged `chained_dips` and ranked
+  # between the steady candidates and the parabolics: real history, but BUY
+  # signals routinely ride deep underwater before the harvest. 5 legs at
+  # N=10% = ~-41% from the first rung. Universe sweep 2026-07-30: flags
+  # NET, DDOG, UAL, BLDR, DECK (5 of 41 steady names).
+  chained_max_down_streak: 5
+  # Depth is not the only axis: chains of chained_deep_run_len (+~-34% at 4)
+  # recurring chained_deep_run_count+ times are a pattern, not an episode.
+  # CRWD went 4-deep twice without ever reaching 5; one 4-deep chain (SPXL,
+  # 2022 bear) stays clean. Sweep 2026-07-31: flags 9 of 336 steady names
+  # (XXXX, CRWD, FSLR, ROM, SPOT, MELI, META, UHS, DHI).
+  chained_deep_run_len: 4
+  chained_deep_run_count: 2
+  # Thin-history gate: a rate needs a denominator. QQUP ranked #16 on 8 legs
+  # from a single year of data; below min_events completed legs the ticker is
+  # flagged `thin_history` and sorted below every proven steady name.
+  min_events: 10
+  # Ranking key since 2026-07-31: net_legs_per_year = (n_up - n_down) /
+  # span_years. A good oscillator needs both a favorable up/down ratio
+  # (quality) and a high leg count (frequency) — neither alone is enough.
+  # VICI (10/8, ratio 1.25x) barely moves: 0.4 net legs/yr. SPXL (46/32,
+  # ratio 1.44x) moves constantly: 2.8 net legs/yr, ranks well above VICI.
+  # LLY (25/9, ratio 2.78x) edges out SPXL on quality: 3.2 net legs/yr.
+  # net_dips_per_year / recovery_rate (dip-transition reliability) remain as
+  # context columns, not the rank key.
   # Leveraged ETFs (TQQQ, SOXL, ...) are part of the universe. The old
   # predictive pipeline excluded them (volatility decay skewed cross-ticker
   # stats); the descriptive model just reports what each ticker printed and
