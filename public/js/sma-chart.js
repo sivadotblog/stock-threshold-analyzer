@@ -353,6 +353,12 @@
       minStreakLabel.textContent = minStreak;
       minUpStreakLabel.textContent = minUpStreak;
 
+      const tvLink = document.getElementById("tv-link");
+      if (tvLink && ticker) {
+        tvLink.href = `https://www.tradingview.com/symbols/${encodeURIComponent(ticker)}/`;
+        tvLink.textContent = `View ${ticker} on TradingView →`;
+      }
+
       try {
         const payload = await loadTicker(ticker);
         render(payload, threshold, minStreak, minUpStreak);
