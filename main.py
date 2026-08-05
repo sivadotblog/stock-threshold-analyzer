@@ -134,29 +134,50 @@ def cmd_analyze(args, cfg) -> int:
     return 0
 
 
-def cmd_leaderboard(args, cfg) -> int:
+def _screen_filename(threshold_pct: float) -> str:
+    return f"bullish_screen_{threshold_pct:g}pct.json"
+
+
+def _leaderboard_payloads(prices: dict[str, pd.DataFrame], categories: dict[str, str],
+                          as_of, thresholds: list[float], years: int, a: dict,
+                          universe_size: int, generated_at: str) -> dict[float, dict]:
+    """threshold_pct -> full leaderboard payload, one per configured threshold."""
     from report import build_leaderboard, compute_leaderboard_rows
+    out = {}
+    for n in thresholds:
+        rows = compute_leaderboard_rows(
+            prices, categories, as_of, n, a["recent_window_days"],
+            a["parabolic_window_days"], a["parabolic_max_run_up_pct"],
+            a["parabolic_recency_days"], a["chained_max_down_streak"],
+            a["chained_deep_run_len"], a["chained_deep_run_count"],
+            a["min_events"])
+        out[n] = build_leaderboard(rows, n, years, universe_size=universe_size,
+                                   generated_at=generated_at)
+    return out
+
+
+def cmd_leaderboard(args, cfg) -> int:
     a = cfg["analyzer"]
-    n = args.threshold or a["thresholds_pct"][0]
     tickers, categories = _universe(cfg, args.tickers)
     prices = _load_prices(tickers, args.years, args.max_age_days)
     as_of = _as_of(prices)
 
-    rows = compute_leaderboard_rows(
-        prices, categories, as_of, n, a["recent_window_days"],
-        a["parabolic_window_days"], a["parabolic_max_run_up_pct"],
-        a["parabolic_recency_days"], a["chained_max_down_streak"],
-        a["chained_deep_run_len"], a["chained_deep_run_count"],
-        a["min_events"])
-    payload = build_leaderboard(
-        rows, n, args.years, universe_size=len(tickers),
-        generated_at=datetime.now(timezone.utc).isoformat(timespec="seconds"))
+    thresholds = [args.threshold] if args.threshold else a["thresholds_pct"]
+    default_n = args.threshold or a["default_threshold_pct"]
+    generated_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+    payloads = _leaderboard_payloads(prices, categories, as_of, thresholds,
+                                     args.years, a, len(tickers), generated_at)
+    if default_n not in payloads:
+        raise SystemExit(
+            f"default_threshold_pct {default_n:g} is not in thresholds {thresholds}")
+    default_payload = payloads[default_n]
 
     hdr = (f"{'#':>3} {'ticker':<7}{'price':>9}{'action':<14}{'need%':>7}{'netlegs':>8}{'netdips':>8}{'P(rec)':>7}"
            f"{'n▲':>5}{'n▼':>5}"
            f"{'cagr%':>8}{'maxDD%':>8}  trend")
     print("\n" + hdr + "\n" + "-" * len(hdr))
-    for r in payload["results"][:25]:
+    for r in default_payload["results"][:25]:
         trend = ("DOWN" if not r["trend_positive"]
                  else "PARA" if r["parabolic"]
                  else "CHAIN" if r["chained_dips"]
@@ -173,8 +194,12 @@ def cmd_leaderboard(args, cfg) -> int:
               f"{r['cagr_pct']:>8.1f}{r['max_drawdown_pct']:>8.1f}  {trend}")
 
     OUTPUT_DIR.mkdir(exist_ok=True)
-    _write_json(SITE_DATA_DIR / "bullish_screen.json", payload)
-    _write_json(OUTPUT_DIR / "leaderboard.json", payload)
+    for n, payload in payloads.items():
+        _write_json(SITE_DATA_DIR / _screen_filename(n), payload)
+    _write_json(SITE_DATA_DIR / "bullish_screen.json", default_payload)
+    _write_json(OUTPUT_DIR / "leaderboard.json", default_payload)
+    _write_json(SITE_DATA_DIR / "screen_manifest.json",
+               {"thresholds": thresholds, "default": default_n})
     return 0
 
 

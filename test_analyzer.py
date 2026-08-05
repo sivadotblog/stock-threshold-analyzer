@@ -456,3 +456,43 @@ def test_leaderboard_drops_zero_event_tickers():
     rows = compute_leaderboard_rows(prices, {}, prices["FLAT"]["date"].iloc[-1],
                                     10.0, 30)
     assert rows == []
+
+
+def test_screen_filename_matches_threshold():
+    from main import _screen_filename
+    assert _screen_filename(5.0) == "bullish_screen_5pct.json"
+    assert _screen_filename(10.0) == "bullish_screen_10pct.json"
+    assert _screen_filename(12.5) == "bullish_screen_12.5pct.json"
+
+
+def test_leaderboard_payloads_one_per_threshold():
+    from main import _leaderboard_payloads
+
+    prices = {
+        "OSC": sine_prices(),
+        "DEC": declining_prices(),
+    }
+    as_of = max(p["date"].iloc[-1] for p in prices.values())
+    a = {
+        "recent_window_days": 30,
+        "parabolic_window_days": 365,
+        "parabolic_max_run_up_pct": 200.0,
+        "parabolic_recency_days": 730,
+        "chained_max_down_streak": 5,
+        "chained_deep_run_len": 4,
+        "chained_deep_run_count": 2,
+        "min_events": 10,
+    }
+    payloads = _leaderboard_payloads(
+        prices, {"OSC": "test"}, as_of, [5.0, 10.0], years=5, a=a,
+        universe_size=2, generated_at="2026-08-04T00:00:00")
+
+    assert set(payloads) == {5.0, 10.0}
+    assert payloads[5.0]["threshold_pct"] == 5.0
+    assert payloads[10.0]["threshold_pct"] == 10.0
+    assert payloads[5.0]["universe_size"] == 2
+    # A tighter threshold never prints fewer events than a looser one for
+    # the same sine wave.
+    osc_5 = next(r for r in payloads[5.0]["results"] if r["ticker"] == "OSC")
+    osc_10 = next(r for r in payloads[10.0]["results"] if r["ticker"] == "OSC")
+    assert (osc_5["n_up"] + osc_5["n_down"]) >= (osc_10["n_up"] + osc_10["n_down"])
