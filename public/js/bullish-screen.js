@@ -14,7 +14,7 @@
   const HIGHLIGHT = "ZETA";
 
   function dataBase() {
-    return window.__DATA_BASE__ || "/stock-threshold-analyzer/data";
+    return window.__DATA_BASE__ || "/everest/data";
   }
 
   function siteBase() {
