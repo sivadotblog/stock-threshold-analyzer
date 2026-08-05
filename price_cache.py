@@ -31,7 +31,11 @@ def _load_prices(ticker: str, years: int) -> Optional[pd.DataFrame]:
         return None
     # Yahoo occasionally returns a half-formed latest bar with a NaN close;
     # a NaN would poison every downstream stat and serialize as invalid JSON.
+    # Thinly-traded OTC listings (Yahoo's *F-suffixed pink-sheet symbols) can
+    # also report a literal $0.00 close on some days — bad data, and a zero
+    # anchor price would divide-by-zero in the threshold-event math.
     df = hist[["Close"]].dropna().copy()
+    df = df[df["Close"] > 0]
     if df.empty:
         return None
     df.index = pd.to_datetime(df.index).tz_localize(None)

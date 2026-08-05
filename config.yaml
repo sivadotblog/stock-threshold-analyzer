@@ -83,417 +83,172 @@ universe:
     - ACGL
     - ADI
     - ADM
-    - ADP
-    - AEE
-    - AEP
     - AFL
-    - AIG
-    - AIZ
     - AJG
     - ALL
-    - ALLE
-    - AMAT
-    - AMD
     - AME
-    - AMGN
     - AMP
     - AMZN
     - ANET
     - AON
-    - APA
-    - APD
     - APH
     - APO
-    - APP
-    - ARES
-    - ATO
-    - AVB
-    - AVGO
     - AXON
     - AXP
     - AZO
     - BAC
-    - BEN
     - BG
     - BKNG
-    - BKR
-    - BLDR
     - BLK
-    - BMY
     - BNY
-    - BRO
-    - BSX
     - BX
-    - C
     - CAH
     - CARR
     - CASY
     - CAT
     - CB
     - CBOE
-    - CBRE
-    - CCL
     - CDNS
     - CEG
-    - CF
     - CFG
-    - CHRW
-    - CI
-    - CIEN
     - CINF
-    - CME
     - CMG
     - CMI
-    - CNP
     - COF
-    - COHR
-    - COP
     - COR
     - COST
-    - CPAY
     - CRH
-    - CRWD
     - CSCO
     - CSX
-    - CTAS
     - CTVA
-    - CVNA
     - CVS
     - CVX
-    - D
     - DAL
-    - DASH
-    - DD
-    - DDOG
     - DE
-    - DECK
-    - DELL
     - DGX
-    - DHI
-    - DLR
-    - DLTR
     - DOV
     - DRI
     - DVA
-    - DVN
     - EA
     - EBAY
-    - ECL
-    - ED
-    - EG
-    - EIX
-    - ELV
     - EME
     - EMR
     - EOG
-    - EQIX
-    - EQR
-    - EQT
-    - ERIE
-    - ES
-    - ESS
-    - ETN
     - ETR
-    - EXC
     - EXE
-    - EXPD
-    - EXPE
-    - EXR
-    - F
-    - FANG
     - FAST
-    - FCX
     - FDX
     - FFIV
-    - FICO
     - FITB
-    - FIX
-    - FLEX
-    - FOX
-    - FOXA
-    - FRT
-    - FSLR
     - FTNT
-    - FTV
     - GD
-    - GE
-    - GEHC
     - GEN
-    - GEV
     - GILD
     - GL
-    - GLW
-    - GM
     - GOOG
     - GOOGL
-    - GPC
-    - GRMN
     - GS
     - GWW
-    - HAL
-    - HAS
-    - HBAN
     - HCA
-    - HD
     - HIG
     - HII
-    - HLT
-    - HON
-    - HOOD
-    - HPE
-    - HSIC
     - HST
-    - HSY
     - HUBB
-    - HWM
     - IBKR
     - IBM
-    - ICE
-    - IEX
-    - INCY
-    - INTC
     - IR
     - IRM
-    - ISRG
     - IVZ
-    - J
     - JBHT
-    - JBL
-    - JCI
     - JPM
     - KEY
     - KEYS
-    - KIM
     - KKR
-    - KLAC
     - KMI
-    - KR
     - L
-    - LDOS
-    - LH
-    - LHX
-    - LII
     - LIN
-    - LITE
     - LLY
-    - LMT
     - LOW
-    - LRCX
-    - LUV
-    - LYV
-    - MA
-    - MAR
-    - MAS
-    - MCHP
     - MCK
     - MCO
     - MET
-    - META
-    - MGM
-    - MLM
-    - MMM
     - MNST
     - MO
-    - MPC
-    - MPWR
-    - MRK
-    - MRVL
     - MS
     - MSCI
     - MSFT
     - MSI
-    - MTB
-    - MU
     - NDAQ
     - NDSN
-    - NEE
-    - NEM
-    - NFLX
-    - NI
-    - NOC
     - NRG
-    - NSC
     - NTAP
-    - NTRS
     - NUE
-    - NVDA
-    - NVR
     - NWS
     - NWSA
-    - NXPI
     - ODFL
-    - OKE
-    - OMC
-    - "ON"
-    - ORCL
     - ORLY
-    - OXY
     - PANW
-    - PAYX
     - PCAR
-    - PCG
-    - PEG
     - PFG
     - PGR
     - PH
-    - PHM
     - PKG
-    - PLD
-    - PLTR
     - PM
-    - PNC
-    - PNR
-    - PNW
-    - PPL
     - PRU
-    - PSA
-    - PSX
     - PWR
-    - QCOM
-    - RCL
-    - REGN
     - RF
     - RJF
-    - RL
     - ROK
-    - ROL
     - ROST
     - RSG
-    - RTX
-    - SBUX
     - SCHW
-    - SHW
-    - SLB
-    - SMCI
     - SNA
     - SNPS
-    - SO
-    - SPG
     - SPGI
-    - SRE
-    - STE
     - STLD
     - STT
-    - STX
     - SYF
-    - SYY
-    - T
-    - TDG
     - TDY
     - TEL
-    - TER
-    - TFC
     - TJX
     - TKO
-    - TMO
-    - TMUS
-    - TPL
-    - TPR
     - TRGP
     - TRV
-    - TSLA
-    - TT
-    - TTWO
-    - TXN
-    - TXT
-    - UAL
-    - UBER
-    - UHS
-    - ULTA
-    - UNH
-    - UNP
-    - URI
-    - USB
-    - VICI
     - VLO
-    - VLTO
-    - VMC
-    - VRSK
-    - VRSN
-    - VRT
     - VRTX
-    - VST
     - VTR
-    - VTRS
     - WAB
-    - WAT
-    - WDC
-    - WELL
     - WFC
-    - WM
-    - WMB
     - WMT
     - WRB
-    - WSM
-    - XOM
-    - XYL
-    - YUM
 
   # Hand-curated liquid mid/small-cap volatile growth — the ZETA-like cohort.
   # Many post-2020 IPOs that swing hard and trend in big multi-month arcs.
   supplement:
     # ad-tech / martech / digital advertising
-    - ZETA
     - CART
-    - AAOI
     # application / infra / security SaaS
-    - DOCN
-    - FROG
-    - NET
-    - GWRE
-    - AMPX
     # consumer internet / platforms
-    - RDDT
-    - SPOT
     # fintech / crypto-adjacent
-    - AFRM
-    - LC
-    - NU
-    - HUT
-    - CIFR
-    - MSTR
-    - BTDR
     # EV / clean energy (high-beta)
     # space / defense / frontier
-    - RKLB
-    - ASTS
-    - LUNR
-    - PL
-    - RDW
     # biotech / genomics (volatile)
     # meme / high-volatility consumer
-    - CVNA
-    - CELH
-    - HIMS
-    - OSCR
 
-    - BE
-    - CRWV
     # curated oscillators added 2026-07-16 — screened steady trend-positive
     # (>=3 up-legs/yr, not parabolic) before inclusion
     - TSM
     - ASML
-    - SNOW
-    - MELI
-    - NTNX
     - SMH
     - SOXX
     - GDX
     - XME
-    - ITB
-    - XBI
-    - EWZ
-  # Leveraged ETFs — broad market (3x bull)
-  leveraged_4x_broad:
-    - XXXX # MAX S&P 500 4X Leveraged ETN
-
+  # leveraged_4x_broad removed 2026-08-05: its sole member (XXXX) didn't
+  # survive the whole-universe rank<=600 cut — see docs/pruned-tickers-2026-08-05.md.
   leveraged_3x_broad:
-    - TQQQ # UltraPro QQQ — Nasdaq-100
     - UPRO # UltraPro S&P500
     - SPXL # Daily S&P 500 Bull 3X
     - UDOW # UltraPro Dow30
-    - UMDD # UltraPro MidCap 400
-    - MIDU # Daily Mid Cap Bull 3X
 
   # Leveraged ETFs — broad market (2x bull)
   leveraged_2x_broad:
@@ -503,40 +258,459 @@ universe:
     - QQUP # Daily Magnificent 7 Bull 2X
     - QQXL # Ultra QQQ Top 30
     - DDM # Ultra Dow30
-    - MVV # Ultra MidCap400
     - UWM # Ultra Russell2000
-    - SAA # Ultra SmallCap600
-    - URSP # Ultra S&P 500 Equal Weight
 
   # Leveraged ETFs — sector (bull)
   leveraged_sector:
-    - TECL # Daily Technology Bull 3X
-    - ROM # Ultra Technology 2X
-    - SOXL # Daily Semiconductor Bull 3X
-    - USD # Ultra Semiconductors 2X
     - CURE # Daily Healthcare Bull 3X
     - RXL # Ultra Health Care 2X
-    - BIB # Ultra Nasdaq Biotechnology 2X
-    - FAS # Daily Financial Bull 3X
     - UYG # Ultra Financials 2X
-    - DIG # Ultra Energy 2X
-    - GUSH # Daily S&P Oil & Gas E&P Bull 2X
-    - DFEN # Daily Aerospace & Defense Bull 3X
     - UXI # Ultra Industrials 2X
     - UYM # Ultra Materials 2X
-    - UPW # Ultra Utilities 2X
-    - LTL # Ultra Communication Services 2X
-    - TPOR # Daily Transportation Bull 3X
-    - HIBL # Daily S&P 500 High Beta Bull 3X
     - UCYB # Ultra Nasdaq Cybersecurity 2X
-    - AIBU # Daily AI and Big Data Bull 2X
-    - FNGG # Daily NYSE FANG+ Bull 2X
 
   # Leveraged ETFs — international & fixed income (bull)
   leveraged_international:
-    - KORU # Daily MSCI South Korea Bull 3X
-    - MEXX # Daily MSCI Mexico Bull 3X
-    - EURL # Daily FTSE Europe Bull 3X
     - EET # Ultra MSCI Emerging Markets 2X
     - EFO # Ultra MSCI EAFE 2X
     - EZJ # Ultra MSCI Japan 2X
+
+
+  # Candidate batch scraped 2026-08-05 from stock/ETF screeners (_temp/stock_list.md,
+  # _temp/etf_list.md) — UNSCREENED. Deduped against every category above. Pending a
+  # whole-universe rank<=600 curation pass: run `main.py leaderboard`, then permanently
+  # drop any ticker (in this category or any other) that ranks worse than 600 or never
+  # prints a threshold event at all. Removed names get logged, not silently deleted —
+  # see docs/pruned-tickers-2026-08-05.md once that pass runs.
+  candidates_2026_08:
+    - ACOG
+    - ACSI
+    - ACWI
+    - ADEA
+    - AESR
+    - AGIX
+    - AGM
+    - AGMB
+    - AIFD
+    - AIQ
+    - AIVC
+    - APHU
+    - ARCC
+    - ARTY
+    - ARVR
+    - AUSF
+    - AVDV
+    - AVGG
+    - AVGU
+    - AVUS
+    - AVUV
+    - BBLU
+    - BBMC
+    - BBUS
+    - BFOR
+    - BGRO
+    - BKIE
+    - BKLC
+    - BKMC
+    - BKSE
+    - BLCR
+    - BRNY
+    - BSVO
+    - BUFQ
+    - BUG
+    - BUL
+    - CAFG
+    - CALF
+    - CARK
+    - CATH
+    - CGDV
+    - CGGR
+    - CGUS
+    - CHGX
+    - CIBR
+    - CLOD
+    - COPP
+    - COWZ
+    - CPTL
+    - CRBN
+    - CSM
+    - CSTNL
+    - CVLC
+    - CVMC
+    - CVSA
+    - CZA
+    - DBEF
+    - DEMZ
+    - DFAU
+    - DFIN
+    - DFNL
+    - DFSI
+    - DGRW
+    - DGT
+    - DIVB
+    - DRUP
+    - DSI
+    - DSMC
+    - DSTL
+    - DUSA
+    - DVXK
+    - DYNF
+    - EFIV
+    - EGUS
+    - EPOL
+    - EPS
+    - EQIN
+    - EQL
+    - EQRR
+    - EQWL
+    - ESG
+    - ESGG
+    - ESGU
+    - ESGV
+    - ESML
+    - ETNG
+    - EUAD
+    - EVLU
+    - EWI
+    - EWN
+    - EWO
+    - EWQQF
+    - EZM
+    - FAB
+    - FAD
+    - FAI
+    - FBCG
+    - FBOT
+    - FDCF
+    - FDG
+    - FDIF
+    - FDIS
+    - FDLS
+    - FDM
+    - FDMO
+    - FDN
+    - FDRR
+    - FDTS
+    - FDTX
+    - FDVV
+    - FESM
+    - FEX
+    - FFLC
+    - FFOG
+    - FIDU
+    - FITE
+    - FLCA
+    - FLQL
+    - FLRG
+    - FNCL
+    - FNDA
+    - FNDB
+    - FNDX
+    - FNGS
+    - FNK
+    - FNX
+    - FNY
+    - FQAL
+    - FTA
+    - FTC
+    - FTEC
+    - FV
+    - FVAL
+    - FXL
+    - FXO
+    - FYC
+    - FYT
+    - FYX
+    - GABF
+    - GAMR
+    - GARP
+    - GCAD
+    - GFF
+    - GLOF
+    - GOOW
+    - GOP
+    - GOU
+    - GRID
+    - GRPM
+    - GSC
+    - GSLC
+    - GSPY
+    - GSUS
+    - GURU
+    - HACK
+    - HAP
+    - HAPI
+    - HCMT
+    - HERD
+    - HEZU
+    - HLAL
+    - HSCZ
+    - HTUS
+    - IBOT
+    - ICOP
+    - IDCC
+    - IETC
+    - IFED
+    - IGM
+    - IGV
+    - IHAK
+    - IHCNF
+    - IJJ
+    - ILCB
+    - ILCG
+    - IMCB
+    - IMCG
+    - IMSXF
+    - IOO
+    - IQSU
+    - IRRRF
+    - ISRCF
+    - ISTM
+    - ISVAF
+    - ITA
+    - ITOT
+    - ITTSF
+    - IUS
+    - IUSG
+    - IVES
+    - IVV
+    - IVVPF
+    - IVW
+    - IWB
+    - IWC
+    - IWDL
+    - IWF
+    - IWFG
+    - IWFL
+    - IWL
+    - IWLG
+    - IWV
+    - IWY
+    - IXN
+    - IYW
+    - IYY
+    - JGRO
+    - JHDV
+    - JHML
+    - JMOM
+    - JQUA
+    - JUST
+    - JVAL
+    - KBWB
+    - KCE
+    - KOKU
+    - KRBN
+    - LCF
+    - LCLG
+    - LEGR
+    - LFSC
+    - LGH
+    - LGRO
+    - LLYVA
+    - LMTL
+    - LRGE
+    - LRGF
+    - LRND
+    - LRNZ
+    - LSGR
+    - MAGS
+    - MAGX
+    - MAKX
+    - MATX
+    - MEM
+    - MGC
+    - MGK
+    - MISL
+    - MLI
+    - MODL
+    - MQQQ
+    - MVPA
+    - MVPL
+    - NACP
+    - NANC
+    - NANR
+    - NETG
+    - NITE
+    - NTSX
+    - NUGO
+    - NULC
+    - NULG
+    - NVDB
+    - OBT
+    - OEF
+    - OMFL
+    - ONEQ
+    - OPTZ
+    - OVL
+    - OVS
+    - PALC
+    - PAMC
+    - PAVE
+    - PBUS
+    - PEXL
+    - PICK
+    - PJFG
+    - PPA
+    - PRF
+    - PSCI
+    - PSCT
+    - PSWD
+    - PTNQ
+    - PWB
+    - QARP
+    - QBIG
+    - QGRO
+    - QGRW
+    - QLC
+    - QOWZ
+    - QQEW
+    - QQH
+    - QQMG
+    - QQQ
+    - QQQE
+    - QQQM
+    - QQQP
+    - QQQS
+    - QQQU
+    - QTEC
+    - QTOP
+    - QUAL
+    - QULL
+    - QVAL
+    - QYLG
+    - RDIV
+    - RDVY
+    - RECS
+    - REVS
+    - RFV
+    - ROE
+    - ROKT
+    - RRX
+    - RSPN
+    - RSPT
+    - RSSL
+    - RSST
+    - RTXG
+    - RUDQF
+    - RVER
+    - RWJ
+    - RWK
+    - RWL
+    - SCDL
+    - SCHB
+    - SCHG
+    - SCHK
+    - SCHX
+    - SDVY
+    - SEIM
+    - SEIV
+    - SEMI
+    - SFY
+    - SFYF
+    - SKYY
+    - SLX
+    - SMIN
+    - SMIZ
+    - SNPE
+    - SNPG
+    - SPAM
+    - SPBC
+    - SPFI
+    - SPHB
+    - SPHQ
+    - SPMO
+    - SPTE
+    - SPTM
+    - SPUC
+    - SPUS
+    - SPXE
+    - SPXN
+    - SPXV
+    - SPY
+    - SPYG
+    - SPYM
+    - SPYQ
+    - SPYU
+    - SPYX
+    - STXG
+    - SUPP
+    - SUSA
+    - SUSL
+    - SVAL
+    - SW
+    - SXI
+    - SYLD
+    - TBXU
+    - TDI
+    - TDIV
+    - TDV
+    - TDVI
+    - TECB
+    - TEKY
+    - TEQI
+    - TGRT
+    - THNQ
+    - THRO
+    - TILT
+    - TMFC
+    - TNL
+    - TOK
+    - TRFM
+    - TSME
+    - TTEQ
+    - TTXU
+    - TUG
+    - TYLG
+    - UDIV
+    - UFOX
+    - UGE
+    - UNTY
+    - UPV
+    - URTH
+    - USMC
+    - USNZ
+    - USSG
+    - USVM
+    - USXF
+    - VCR
+    - VEGN
+    - VFMF
+    - VFUUF
+    - VFVA
+    - VGFPF
+    - VGT
+    - VIS
+    - VLU
+    - VONE
+    - VONG
+    - VOO
+    - VOOG
+    - VTHR
+    - VTI
+    - VTOL
+    - VUG
+    - VUSE
+    - VV
+    - WAR
+    - WINN
+    - WLDR
+    - WOMN
+    - WRND
+    - WTV
+    - XAIX
+    - XAR
+    - XCOR
+    - XITK
+    - XJR
+    - XLG
+    - XLK
+    - XLSR
+    - XMHQ
+    - XMVM
+    - XPND
+    - XSVM
+    - XTL
+    - XUSP
+    - XVV
+    - YALL
+    - ZETX
