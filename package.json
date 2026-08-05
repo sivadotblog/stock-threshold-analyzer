@@ -1,5 +1,5 @@
 {
-  "name": "stock-threshold-analyzer",
+  "name": "everest",
   "type": "module",
   "scripts": {
     "dev": "astro dev",
