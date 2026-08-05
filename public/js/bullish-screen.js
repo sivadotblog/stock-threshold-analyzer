@@ -225,45 +225,106 @@
   }
 
   // ---- Bootstrap ----
-  function render() {
+  let lastResults = [];
+  let defaultThreshold = 10;
+  const screenCache = new Map(); // thresholdPct -> payload
+
+  async function loadManifest() {
+    const url = `${dataBase()}/screen_manifest.json`;
+    const resp = await fetch(url, { cache: "no-cache" });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status} loading ${url}`);
+    return await resp.json();
+  }
+
+  async function loadScreen(thresholdPct) {
+    if (screenCache.has(thresholdPct)) return screenCache.get(thresholdPct);
+    const url = `${dataBase()}/bullish_screen_${thresholdPct}pct.json`;
+    const resp = await fetch(url, { cache: "no-store" });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status} loading ${url}`);
+    const data = await resp.json();
+    screenCache.set(thresholdPct, data);
+    return data;
+  }
+
+  function renderMeta(metaEl, data) {
+    const results = data.results || [];
+    const nPos = results.filter((r) => r.trend_positive && !r.parabolic && !r.chained_dips && !r.thin_history).length;
+    const nPara = results.filter((r) => r.trend_positive && r.parabolic).length;
+    const nChain = results.filter((r) => r.trend_positive && !r.parabolic && r.chained_dips).length;
+    const nThin = results.filter((r) => r.trend_positive && !r.parabolic && !r.chained_dips && r.thin_history).length;
+    metaEl.innerHTML =
+      `Screened <b>${data.universe_size}</b> tickers @ ±${data.threshold_pct}% ` +
+      `over ${data.lookback_years}y — <b>${nPos}</b> steady trend-positive candidates, ` +
+      `${nThin} thin histories (🌱, ranked down), ` +
+      `${nChain} dip-chainers (⛓️, ranked down), ` +
+      `${nPara} parabolic runners (🚀, ranked down), ` +
+      `${results.filter((r) => !r.trend_positive).length} downtrenders (greyed). ` +
+      `<small>Generated ${new Date(data.generated_at).toLocaleString()}.</small>`;
+  }
+
+  async function loadAndRender(thresholdPct, isFallback) {
     const scatterEl = document.getElementById("bullish-scatter");
     const tableEl = document.getElementById("bullish-table");
     const metaEl = document.getElementById("bullish-meta");
     if (!scatterEl || typeof Plotly === "undefined" || typeof Tabulator === "undefined") return;
 
-    fetch(`${dataBase()}/bullish_screen.json`, { cache: "no-store" })
-      .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-      .then(data => {
-        const results = data.results || [];
-        if (metaEl) {
-          const nPos = results.filter((r) => r.trend_positive && !r.parabolic && !r.chained_dips && !r.thin_history).length;
-          const nPara = results.filter((r) => r.trend_positive && r.parabolic).length;
-          const nChain = results.filter((r) => r.trend_positive && !r.parabolic && r.chained_dips).length;
-          const nThin = results.filter((r) => r.trend_positive && !r.parabolic && !r.chained_dips && r.thin_history).length;
-          metaEl.innerHTML =
-            `Screened <b>${data.universe_size}</b> tickers @ ±${data.threshold_pct}% ` +
-            `over ${data.lookback_years}y — <b>${nPos}</b> steady trend-positive candidates, ` +
-            `${nThin} thin histories (🌱, ranked down), ` +
-            `${nChain} dip-chainers (⛓️, ranked down), ` +
-            `${nPara} parabolic runners (🚀, ranked down), ` +
-            `${results.filter((r) => !r.trend_positive).length} downtrenders (greyed). ` +
-            `<small>Generated ${new Date(data.generated_at).toLocaleString()}.</small>`;
+    try {
+      const data = await loadScreen(thresholdPct);
+      lastResults = data.results || [];
+      if (metaEl) renderMeta(metaEl, data);
+      renderScatter(scatterEl, lastResults);
+      buildTable(tableEl, lastResults);
+    } catch (err) {
+      if (!isFallback && thresholdPct !== defaultThreshold) {
+        const thresholdInput = document.getElementById("lb-threshold");
+        const thresholdLabel = document.getElementById("lb-threshold-label");
+        if (thresholdInput) thresholdInput.value = defaultThreshold;
+        if (thresholdLabel) thresholdLabel.textContent = `${defaultThreshold}%`;
+        return loadAndRender(defaultThreshold, true);
+      }
+      if (metaEl) metaEl.innerHTML =
+        `<span style="color:var(--down,#c2410c);">Could not load bullish_screen_${thresholdPct}pct.json (${err.message || err}). ` +
+        "Run <code>python3 main.py leaderboard</code> to generate it.</span>";
+    }
+  }
+
+  async function init() {
+    const scatterEl = document.getElementById("bullish-scatter");
+    if (!scatterEl) return;
+
+    const thresholdInput = document.getElementById("lb-threshold");
+    const thresholdLabel = document.getElementById("lb-threshold-label");
+
+    if (thresholdInput) {
+      try {
+        const manifest = await loadManifest();
+        if (typeof manifest.default === "number") defaultThreshold = manifest.default;
+        if (Array.isArray(manifest.thresholds) && manifest.thresholds.length) {
+          thresholdInput.min = Math.min(...manifest.thresholds);
+          thresholdInput.max = Math.max(...manifest.thresholds);
         }
-        renderScatter(scatterEl, results);
-        buildTable(tableEl, results);
-        wireFilters();
-        const rerender = () => renderScatter(scatterEl, results);
-        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", rerender);
-        window.addEventListener("themechange", rerender);
-      })
-      .catch(err => {
-        if (metaEl) metaEl.innerHTML =
-          `<span style="color:var(--down,#c2410c);">Could not load bullish_screen.json (${err}). ` +
-          "Run <code>python3 main.py leaderboard</code> to generate it.</span>";
+      } catch (e) {
+        // Manifest missing: fall back to the slider's markup defaults (5-20, default 10).
+      }
+      thresholdInput.value = defaultThreshold;
+      if (thresholdLabel) thresholdLabel.textContent = `${defaultThreshold}%`;
+
+      thresholdInput.addEventListener("input", () => {
+        const n = parseFloat(thresholdInput.value);
+        if (thresholdLabel) thresholdLabel.textContent = `${n}%`;
+        loadAndRender(n, false);
       });
+    }
+
+    await loadAndRender(defaultThreshold, false);
+    wireFilters();
+
+    const rerenderScatter = () => renderScatter(scatterEl, lastResults);
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", rerenderScatter);
+    window.addEventListener("themechange", rerenderScatter);
   }
 
   if (document.readyState === "loading")
-    document.addEventListener("DOMContentLoaded", render);
-  else render();
+    document.addEventListener("DOMContentLoaded", init);
+  else init();
 })();

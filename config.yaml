@@ -14,8 +14,11 @@ site:
 # Single source of truth for every tunable; no magic constants in code.
 # ---------------------------------------------------------------------------
 analyzer:
-  thresholds_pct: [10.0]        # ±N% leg sizes analyzed / reported
+
+  thresholds_pct: [5.0, 10.0, 15.0, 20.0]  # ±N% leg sizes precomputed for the leaderboard slider
+  default_threshold_pct: 10.0   # slider's initial position; also the bullish_screen.json alias
   lookback_years: 7             # price history window
+
   recent_window_days: 30        # "Recent Δ" column: events in the trailing N days
   # Parabolic gate: a ticker whose close ever reached parabolic_max_run_up_pct
   # above its lowest close in the trailing parabolic_window_days (CIFR $3->$25,

@@ -28,6 +28,15 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     the chart explorer.
   </p>
 
+  <div class="sma-controls">
+    <div>
+      <label for="lb-threshold">
+        Threshold <span id="lb-threshold-label" class="value-pill">10%</span>
+      </label>
+      <input id="lb-threshold" type="range" min="5" max="20" step="5" value="10" />
+    </div>
+  </div>
+
   <p id="bullish-meta"><em>Loading screen…</em></p>
 
   <div id="bullish-scatter" style="min-height:520px;"></div>
