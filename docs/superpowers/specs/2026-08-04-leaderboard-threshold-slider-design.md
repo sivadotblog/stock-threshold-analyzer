@@ -34,6 +34,7 @@ the page first loads.
 ## Data pipeline
 
 **`config.yaml`**
+
 - `analyzer.thresholds_pct: [5.0, 10.0, 15.0, 20.0]` (already a list; the
   `analyze` subcommand already loops over it — this reuses existing infra).
 - New key `analyzer.default_threshold_pct: 10.0` — the threshold used for
@@ -42,6 +43,7 @@ the page first loads.
   keeps the default explicit rather than implicit in list order.
 
 **`main.py cmd_leaderboard`**
+
 - Loop over every threshold in `analyzer.thresholds_pct`, computing rows
   and writing `public/data/bullish_screen_{n:g}pct.json` for each (reusing
   `compute_leaderboard_rows` / `build_leaderboard`, unchanged).
@@ -50,9 +52,11 @@ the page first loads.
   seed the Chart page's ticker list, and it's a plausible bookmark/deep
   link, so it must keep working unchanged.
 - Write `public/data/screen_manifest.json`:
+
   ```json
   { "thresholds": [5, 10, 15, 20], "default": 10 }
   ```
+
   so the frontend doesn't hardcode the stops.
 - `--threshold` CLI flag behavior is unchanged (still overrides to a single
   ad-hoc run, mirroring today).
@@ -62,12 +66,14 @@ the page first loads.
 **`index.astro`**
 Add a threshold control above the table, styled like the Chart page's
 controls:
-```
+
+```text
 Threshold  [ 10% ]
 |——●———|      (range: min=5 max=20 step=5 value=10)
 ```
 
 **`bullish-screen.js`**
+
 - Refactor the current one-shot fetch-then-render into
   `loadAndRender(thresholdPct)`.
 - Cache fetched datasets in a `Map<thresholdPct, payload>` so re-visiting a
