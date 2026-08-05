@@ -1,10 +1,10 @@
-# Stock Threshold Analyzer
+# Everest
 
 Oscillation analytics on a **moving-anchor ±N% threshold** rule, built for one
 goal: **dip-cycle compounding** — repeated +10% harvests on stocks that
 oscillate a lot while net-trending up ($10k × 1.1^~50 ≈ $1M).
 
-- **Live site:** https://sivadotblog.github.io/stock-threshold-analyzer/
+- **Live site:** https://sivadotblog.github.io/everest/
 - **Design record:** [PLAN.md](PLAN.md)
 
 ## The rule
