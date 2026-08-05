@@ -5,7 +5,7 @@
 # Static site: pre-fetch price data for the top N tickers from bullish_screen.json.
 # Run `main.py leaderboard` first, then generate_data.py.
 site:
-  lookback_years: 5
+  lookback_years: 7
   top_n: 600
 
 # ---------------------------------------------------------------------------
@@ -14,9 +14,11 @@ site:
 # Single source of truth for every tunable; no magic constants in code.
 # ---------------------------------------------------------------------------
 analyzer:
+
   thresholds_pct: [5.0, 10.0, 15.0, 20.0]  # ±N% leg sizes precomputed for the leaderboard slider
   default_threshold_pct: 10.0   # slider's initial position; also the bullish_screen.json alias
-  lookback_years: 5             # price history window
+  lookback_years: 7             # price history window
+
   recent_window_days: 30        # "Recent Δ" column: events in the trailing N days
   # Parabolic gate: a ticker whose close ever reached parabolic_max_run_up_pct
   # above its lowest close in the trailing parabolic_window_days (CIFR $3->$25,
@@ -58,6 +60,7 @@ analyzer:
   # LLY (25/9, ratio 2.78x) edges out SPXL on quality: 3.2 net legs/yr.
   # net_dips_per_year / recovery_rate (dip-transition reliability) remain as
   # context columns, not the rank key.
+  
   # Leveraged ETFs (TQQQ, SOXL, ...) are part of the universe. The old
   # predictive pipeline excluded them (volatility decay skewed cross-ticker
   # stats); the descriptive model just reports what each ticker printed and
