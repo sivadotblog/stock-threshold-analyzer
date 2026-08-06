@@ -239,6 +239,7 @@ universe:
   supplement:
     # ad-tech / martech / digital advertising
     - CART
+    - DDOG
     # application / infra / security SaaS
     # consumer internet / platforms
     # fintech / crypto-adjacent
@@ -726,3 +727,4 @@ universe:
     - XVV
     - YALL
     - ZETX
+
