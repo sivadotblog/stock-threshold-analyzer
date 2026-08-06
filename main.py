@@ -63,22 +63,19 @@ def _write_json(path: Path, payload) -> None:
     print(f"wrote {path}")
 
 
-def _universe(cfg: dict, tickers_arg: str | None) -> tuple[list[str], dict[str, str]]:
-    """Universe tickers + ticker->category map. Leveraged ETF categories are
-    excluded by default (volatility decay makes their event statistics
-    non-comparable) unless analyzer.include_leveraged is set."""
+def _universe(cfg: dict, tickers_arg: str | None) -> list[str]:
+    """Universe tickers. Leveraged ETF categories are excluded by default
+    (volatility decay makes their event statistics non-comparable) unless
+    analyzer.include_leveraged is set."""
     uni = cfg["universe"]
     include_lev = cfg["analyzer"]["include_leveraged"]
-    categories: dict[str, str] = {}
     tickers: set[str] = set()
     for cat, names in uni.items():
-        for t in names:
-            categories.setdefault(t, cat)
         if include_lev or not cat.startswith("leveraged"):
             tickers.update(names)
     if tickers_arg:
         tickers = {t.strip().upper() for t in tickers_arg.split(",")}
-    return sorted(tickers), categories
+    return sorted(tickers)
 
 
 def _load_prices(tickers: list[str], years: int, max_age_days: float) -> dict[str, pd.DataFrame]:
@@ -102,11 +99,13 @@ def _as_of(prices_by_ticker: dict[str, pd.DataFrame]) -> pd.Timestamp:
 # ---------------------------------------------------------------------------
 
 def cmd_analyze(args, cfg) -> int:
+    from name_cache import load_cached_names
     from reliability import find_threshold_events
     from report import compute_leaderboard_rows
     a = cfg["analyzer"]
-    tickers, categories = _universe(cfg, args.tickers)
+    tickers = _universe(cfg, args.tickers)
     prices = _load_prices(tickers, args.years, args.max_age_days)
+    names = load_cached_names(tickers)
     as_of = _as_of(prices)
     print(f"{len(prices)} tickers with data, as of {as_of.date()}")
 
@@ -125,7 +124,7 @@ def cmd_analyze(args, cfg) -> int:
         print(f"wrote {ev_path} ({len(ev_all)} events)")
 
         rows = compute_leaderboard_rows(
-            prices, categories, as_of, n, a["recent_window_days"],
+            prices, names, as_of, n, a["recent_window_days"],
             a["parabolic_window_days"], a["parabolic_max_run_up_pct"],
             a["parabolic_recency_days"], a["chained_max_down_streak"],
             a["chained_deep_run_len"], a["chained_deep_run_count"],
@@ -140,7 +139,7 @@ def _screen_filename(threshold_pct: float) -> str:
     return f"bullish_screen_{threshold_pct:g}pct.json"
 
 
-def _leaderboard_payloads(prices: dict[str, pd.DataFrame], categories: dict[str, str],
+def _leaderboard_payloads(prices: dict[str, pd.DataFrame], names: dict[str, str],
                           as_of, thresholds: list[float], years: int, a: dict,
                           universe_size: int, generated_at: str) -> dict[float, dict]:
     """threshold_pct -> full leaderboard payload, one per configured threshold."""
@@ -152,7 +151,7 @@ def _leaderboard_payloads(prices: dict[str, pd.DataFrame], categories: dict[str,
     out = {}
     for n in thresholds:
         rows = compute_leaderboard_rows(
-            prices, categories, as_of, n, a["recent_window_days"],
+            prices, names, as_of, n, a["recent_window_days"],
             a["parabolic_window_days"], a["parabolic_max_run_up_pct"],
             a["parabolic_recency_days"], a["chained_max_down_streak"],
             a["chained_deep_run_len"], a["chained_deep_run_count"],
@@ -163,16 +162,18 @@ def _leaderboard_payloads(prices: dict[str, pd.DataFrame], categories: dict[str,
 
 
 def cmd_leaderboard(args, cfg) -> int:
+    from name_cache import load_cached_names
     a = cfg["analyzer"]
-    tickers, categories = _universe(cfg, args.tickers)
+    tickers = _universe(cfg, args.tickers)
     prices = _load_prices(tickers, args.years, args.max_age_days)
+    names = load_cached_names(tickers)
     as_of = _as_of(prices)
 
     thresholds = [args.threshold] if args.threshold else a["thresholds_pct"]
     default_n = args.threshold or a["default_threshold_pct"]
     generated_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
-    payloads = _leaderboard_payloads(prices, categories, as_of, thresholds,
+    payloads = _leaderboard_payloads(prices, names, as_of, thresholds,
                                      args.years, a, len(tickers), generated_at)
     if default_n not in payloads:
         raise SystemExit(

@@ -410,7 +410,7 @@ def test_leaderboard_positives_rank_above_downtrenders():
         "CLU": make_prices([100, 89.9, 80.8, 72.6, 87.5, 105]),  # positive, 5 legs
     }
     as_of = max(p["date"].iloc[-1] for p in prices.values())
-    rows = compute_leaderboard_rows(prices, {"OSC": "test"}, as_of, 10.0, 30)
+    rows = compute_leaderboard_rows(prices, {"OSC": "Oscillator Corp"}, as_of, 10.0, 30)
 
     tickers = [r["ticker"] for r in rows]
     assert tickers[-1] == "DEC"                 # downtrender always last
@@ -418,8 +418,8 @@ def test_leaderboard_positives_rank_above_downtrenders():
     # CLU's 5 events make it thin history: below the proven oscillator no
     # matter what its tiny-span rates say
     assert tickers[:2] == ["OSC", "CLU"]
-    assert rows[0]["category"] == "test"
-    assert rows[1]["category"] == ""            # unmapped ticker -> empty category
+    assert rows[0]["name"] == "Oscillator Corp"
+    assert rows[1]["name"] == "CLU"             # unmapped ticker -> falls back to symbol
 
     payload = build_leaderboard(rows, 10.0, 5, universe_size=3,
                                 generated_at="2026-07-14T00:00:00")

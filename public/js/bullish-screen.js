@@ -39,7 +39,7 @@
     const zeta = candidates.find((r) => r.ticker === HIGHLIGHT);
 
     const hover = (r) =>
-      `<b>${r.ticker}</b> &nbsp;#${r.rank}<br>` +
+      `<b>${r.ticker}</b>${r.name && r.name !== r.ticker ? ` — ${r.name}` : ""} &nbsp;#${r.rank}<br>` +
       `net legs/yr: <b>${fmt(r.net_legs_per_year, 1)}</b> (${r.n_up}▲ / ${r.n_down}▼)<br>` +
       `net dips/yr: ${fmt(r.net_dips_per_year, 1)} — P(rec) ${r.recovery_rate == null ? "—" : fmt(r.recovery_rate, 2)}<br>` +
       `CAGR: ${fmt(r.cagr_pct, 1)}%/yr<br>` +
@@ -151,6 +151,8 @@
       columns: [
         { title: "#", field: "rank", sorter: "number", hozAlign: "right", width: 55 },
         { title: "Ticker", field: "ticker", sorter: "string", width: 105, formatter: tickerFmt },
+        { title: "Name", field: "name", sorter: "string", minWidth: 160,
+          formatter: (cell) => `<span style="color:var(--fg-muted,#4a5568);">${cell.getValue() || "—"}</span>` },
         { title: "Price", field: "current_price", sorter: "number", hozAlign: "right", width: 90, formatter: num(2) },
         { title: "Action", field: "action_price", sorter: "number", hozAlign: "left", width: 130, formatter: actionFmt },
         { title: "% Needed", field: "pct_to_action", sorter: "number", hozAlign: "right", width: 100,
@@ -183,8 +185,6 @@
               : v;
           } },
         { title: "Recent Δ", field: "recent_events", hozAlign: "center", width: 150, formatter: recentEventsFmt },
-        { title: "Category", field: "category", sorter: "string", minWidth: 110,
-          formatter: (cell) => `<span style="color:var(--fg-muted,#4a5568);">${cell.getValue() || "—"}</span>` },
       ],
       rowFormatter: (row) => {
         const d = row.getData();
@@ -207,8 +207,12 @@
 
     function applyFilters() {
       const filters = [];
-      const t = document.getElementById("f-ticker")?.value.trim();
-      if (t) filters.push({ field: "ticker", type: "like", value: t });
+      const q = document.getElementById("f-ticker")?.value.trim().toLowerCase();
+      if (q) {
+        filters.push((data) =>
+          (data.ticker || "").toLowerCase().includes(q) ||
+          (data.name || "").toLowerCase().includes(q));
+      }
       const rankMax = document.getElementById("f-rank-max")?.value;
       if (rankMax) filters.push({ field: "rank", type: "<=", value: Number(rankMax) });
       const oscMin = document.getElementById("f-osc-min")?.value;

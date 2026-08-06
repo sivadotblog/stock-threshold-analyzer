@@ -56,8 +56,8 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
   <div id="tb-filters" class="tb-filter-bar">
     <div class="tb-filter-group">
-      <label for="f-ticker">Ticker</label>
-      <input type="text" id="f-ticker" placeholder="e.g. RKLB" autocomplete="off" />
+      <label for="f-ticker">Ticker / Name</label>
+      <input type="text" id="f-ticker" placeholder="e.g. RKLB or Rocket Lab" autocomplete="off" />
     </div>
     <div class="tb-filter-group">
       <label for="f-rank-max">Rank ≤</label>
@@ -87,6 +87,12 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     <table>
       <thead><tr><th>Field</th><th>What it means</th></tr></thead>
       <tbody>
+        <tr>
+          <td><strong>Name</strong></td>
+          <td>Company / fund name, fetched from Yahoo Finance and cached alongside prices.
+          Falls back to the ticker symbol if Yahoo has nothing for it. Search by name or
+          ticker using the filter box above.</td>
+        </tr>
         <tr>
           <td><strong>Price</strong></td>
           <td>Current price — the last available close.</td>

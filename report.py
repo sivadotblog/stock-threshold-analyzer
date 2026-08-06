@@ -51,7 +51,7 @@ from reliability import (DEFAULT_CHAINED_DEEP_RUN_COUNT,
 
 
 def compute_leaderboard_rows(prices_by_ticker: dict[str, pd.DataFrame],
-                             categories: dict[str, str],
+                             names: dict[str, str],
                              as_of, threshold_pct: float,
                              recent_window_days: int,
                              parabolic_window_days: int = DEFAULT_PARABOLIC_WINDOW_DAYS,
@@ -90,7 +90,7 @@ def compute_leaderboard_rows(prices_by_ticker: dict[str, pd.DataFrame],
             continue
         rows.append({
             "ticker": ticker,
-            "category": categories.get(ticker, ""),
+            "name": names.get(ticker, ticker),
             **s,
         })
     rows.sort(key=lambda r: (not r["trend_positive"], r["parabolic"],
