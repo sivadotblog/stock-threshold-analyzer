@@ -110,6 +110,8 @@ def cmd_analyze(args, cfg) -> int:
     as_of = _as_of(prices)
     print(f"{len(prices)} tickers with data, as of {as_of.date()}")
 
+    min_history_years = args.years * a["min_history_fraction"]
+
     OUTPUT_DIR.mkdir(exist_ok=True)
     for n in ([args.threshold] if args.threshold else a["thresholds_pct"]):
         frames = []
@@ -127,7 +129,7 @@ def cmd_analyze(args, cfg) -> int:
             a["parabolic_window_days"], a["parabolic_max_run_up_pct"],
             a["parabolic_recency_days"], a["chained_max_down_streak"],
             a["chained_deep_run_len"], a["chained_deep_run_count"],
-            a["min_events"])
+            a["min_events"], min_history_years)
         m_path = OUTPUT_DIR / f"summary_{n:g}pct.csv"
         pd.DataFrame(rows).drop(columns=["recent_events"]).to_csv(m_path, index=False)
         print(f"wrote {m_path} ({len(rows)} tickers)")
@@ -143,6 +145,10 @@ def _leaderboard_payloads(prices: dict[str, pd.DataFrame], categories: dict[str,
                           universe_size: int, generated_at: str) -> dict[float, dict]:
     """threshold_pct -> full leaderboard payload, one per configured threshold."""
     from report import build_leaderboard, compute_leaderboard_rows
+    # short_history gate: ``years`` is the actual fetch window (args.years),
+    # so this is relative to the price history that was really loaded, not
+    # just the config default.
+    min_history_years = years * a["min_history_fraction"]
     out = {}
     for n in thresholds:
         rows = compute_leaderboard_rows(
@@ -150,7 +156,7 @@ def _leaderboard_payloads(prices: dict[str, pd.DataFrame], categories: dict[str,
             a["parabolic_window_days"], a["parabolic_max_run_up_pct"],
             a["parabolic_recency_days"], a["chained_max_down_streak"],
             a["chained_deep_run_len"], a["chained_deep_run_count"],
-            a["min_events"])
+            a["min_events"], min_history_years)
         out[n] = build_leaderboard(rows, n, years, universe_size=universe_size,
                                    generated_at=generated_at)
     return out
@@ -181,7 +187,8 @@ def cmd_leaderboard(args, cfg) -> int:
         trend = ("DOWN" if not r["trend_positive"]
                  else "PARA" if r["parabolic"]
                  else "CHAIN" if r["chained_dips"]
-                 else "THIN" if r["thin_history"] else "up")
+                 else "THIN" if r["thin_history"]
+                 else "YOUNG" if r["short_history"] else "up")
         rec = (f"{r['recovery_rate']:>7.2f}" if r["recovery_rate"] is not None
                else f"{'—':>7}")
         action = (f"{r['action_side']} @ {r['action_price']:.2f}"

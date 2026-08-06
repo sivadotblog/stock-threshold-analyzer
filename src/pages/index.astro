@@ -7,22 +7,26 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     <link rel="stylesheet" href="https://unpkg.com/tabulator-tables@6.3.0/dist/css/tabulator_simple.min.css" />
   </Fragment>
 
-  <h1>Oscillation Leaderboard — reliable dip-cyclers, ranked</h1>
+  <h1>Leaderboard</h1>
   <p>
-    The goal is simple compounding: repeated <strong>±10% round trips</strong> on stocks
-    that oscillate reliably while net-trending up. The ranking key is
+    The goal is simple compounding: repeated <strong>round trips at your chosen
+    threshold</strong> (adjustable below) on stocks that oscillate reliably while
+    net-trending up. The ranking key is
     <strong>net legs/yr</strong> — (up legs − down legs) per year of data — because a good
     oscillator needs both a favorable up/down ratio (quality) and a high leg count
     (frequency); neither alone is enough. Every row also shows its <strong>current
     price</strong> and <strong>action price</strong> (the next level that would print a
     threshold event) so you can judge the gap yourself, rather than a computed
-    "signal" telling you what to do. Four gates keep the ranking honest without a
+    "signal" telling you what to do. Five gates keep the ranking honest without a
     weighted score: downtrenders (📉, negative drift) rank last; parabolic runners
     (🚀, spiked 3x+ from a trailing 12-month low within the last 2 years — one-way regime
     shift, not a repeatable cycle) rank below steady names; dip-chainers (⛓️, a run of
     5+ consecutive down legs, or two-plus runs of 4+ — BUY signals that ride deep
     underwater) rank between the two; thin histories (🌱, fewer than 10 completed legs)
-    rank just below the proven names. Consecutive down-legs are never treated as
+    and short histories (🐣, less price history than the lookback window — a newly-listed
+    leveraged ETF can print plenty of legs on volatility alone without living through
+    enough calendar time for the rate to mean anything) both rank just below the proven
+    names. Consecutive down-legs are never treated as
     failures on their own — a stock that dipped three times before recovering is
     oscillation richness, until it crosses one of those gates. Investigate any ticker in
     the chart explorer.
@@ -89,9 +93,10 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         </tr>
         <tr>
           <td><strong>Action</strong></td>
-          <td>The next price level that would print a ±10% threshold event, based on the
-          last completed leg's price (not today's price). After a down leg at 100 the next
-          event is <code>SELL ≥ 110</code>; after an up leg at 110 the next event is
+          <td>The next price level that would print a threshold event at your selected
+          ±N% threshold, based on the last completed leg's price (not today's price).
+          Example at N=10: after a down leg at 100 the next event is
+          <code>SELL ≥ 110</code>; after an up leg at 110 the next event is
           <code>BUY ≤ 99</code>. This is a level to compare against <strong>Price</strong>,
           deliberately not a recommendation — a stock can be a perfectly good buy before it
           reaches its Action price; whether and when to act is your decision.</td>
@@ -119,9 +124,10 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         </tr>
         <tr>
           <td><strong>n▲ / n▼</strong></td>
-          <td>Raw counts of +10% and −10% legs over the window — the evidence behind every
-          rate above, never hidden. A young listing can show a strong rate on few legs;
-          check n▲ (also see 🌱 thin-history flag below +10 legs).</td>
+          <td>Raw counts of +N% and −N% legs (at the selected threshold) over the window —
+          the evidence behind every rate above, never hidden. A young listing can show a
+          strong rate on few legs;
+          check n▲ (also see 🌱 thin-history and 🐣 short-history flags).</td>
         </tr>
         <tr>
           <td><strong>CAGR%</strong></td>
@@ -140,7 +146,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
           12-month window over the lookback — daily closes vs. the trailing low, no
           averaging. QQQ/SPY sit around +40%; CIFR's $3 → $25 spike is +700%. At
           <strong>+200% (3x) or more within the last 2 years</strong> the ticker is flagged
-          🚀, greyed, and ranked below every steady trend-positive name: those ±10% legs
+          🚀, greyed, and ranked below every steady trend-positive name: those legs
           came from a one-way regime shift, not a repeatable dip-cycle. A spike older than
           2 years stays on the record but no longer demotes — a ticker that oscillated
           cleanly since is judged on its recent behavior, not stale evidence. Thresholds
@@ -163,8 +169,18 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
           legs). Flagged and ranked just below the proven steady names.</td>
         </tr>
         <tr>
+          <td><strong>🐣 Short history</strong></td>
+          <td>The ticker's actual price history is shorter than the lookback window —
+          different problem than 🌱, same root cause. A newly-listed, highly volatile
+          single-stock leveraged ETF can clear the thin-history bar (10+ legs) purely on
+          leverage-inflated chop packed into a single year, then rank near the top of the
+          board on a rate computed over a span it never lived through. Flagged when actual
+          history is under <code>lookback_years × analyzer.min_history_fraction</code>
+          (default 0.9) and ranked at the same tier as 🌱.</td>
+        </tr>
+        <tr>
           <td><strong>Recent Δ</strong></td>
-          <td>Every ±10% threshold crossing in the last 30 days, oldest to newest — e.g. <code>-1↓ -1↓ +1↑</code> for two down-legs then an up-leg. Based on the actual sequence of events, not calendar days, so it isn't affected by weekends/holidays and naturally shows more badges for an active stock and fewer for a quiet one.</td>
+          <td>Every threshold crossing at the selected ±N% in the last 30 days, oldest to newest — e.g. <code>-1↓ -1↓ +1↑</code> for two down-legs then an up-leg. Based on the actual sequence of events, not calendar days, so it isn't affected by weekends/holidays and naturally shows more badges for an active stock and fewer for a quiet one.</td>
         </tr>
       </tbody>
     </table>

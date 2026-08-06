@@ -10,16 +10,21 @@ Downtrenders keep their rows — the chart
 explorer feeds off this list (generate_data.py) — but are flagged
 ``trend_positive: false`` and sorted below every positive so they never rank
 as candidates. Thin histories (fewer than ``min_events`` completed legs, e.g.
-a one-year-old leveraged ETF) are flagged ``thin_history: true`` and sorted
-just below the proven steady names: their rates have no denominator.
-Parabolic runners (a 3x+ spike from a trailing 12-month low, e.g. CIFR
-$3 -> $25) keep their rows too but are flagged ``parabolic: true`` and sorted
-below every steady trend-positive ticker: their legs came from a one-way
-regime shift, not a repeatable dip-cycle. Dip-chainers (longest run of
-consecutive down legs at/past the cap, e.g. NET's 6-deep chain ~-47% from
-the first BUY) are flagged ``chained_dips: true`` and sorted between the
-steady candidates and the parabolics: their history is real but their BUY
-signals routinely ride deep underwater before harvesting. Each row carries
+a one-year-old leveraged ETF) are flagged ``thin_history: true``, and short
+histories (actual price-history span below ``min_history_years`` — a
+newly-listed single-stock leveraged ETF that clears ``min_events`` on
+volatility-inflated chop alone, e.g. LMTL/AVGU at ~1y old) are flagged
+``short_history: true``; both sort at the same tier, just below the proven
+steady names — different cause (leg count vs. calendar span), same problem
+(the rate has no denominator to stand on). Parabolic runners (a 3x+ spike
+from a trailing 12-month low, e.g. CIFR $3 -> $25) keep their rows too but
+are flagged ``parabolic: true`` and sorted below every steady trend-positive
+ticker: their legs came from a one-way regime shift, not a repeatable
+dip-cycle. Dip-chainers (longest run of consecutive down legs at/past the
+cap, e.g. NET's 6-deep chain ~-47% from the first BUY) are flagged
+``chained_dips: true`` and sorted between the steady candidates and the
+parabolics: their history is real but their BUY signals routinely ride deep
+underwater before harvesting. Each row carries
 ``current_price`` (last close) and ``action_side``/``action_price`` (the
 next price level that would print a threshold event) — deliberately not a
 recommendation, just a level to compare against the current price.
@@ -38,6 +43,7 @@ from reliability import (DEFAULT_CHAINED_DEEP_RUN_COUNT,
                          DEFAULT_CHAINED_DEEP_RUN_LEN,
                          DEFAULT_CHAINED_MAX_DOWN_STREAK,
                          DEFAULT_MIN_EVENTS,
+                         DEFAULT_MIN_HISTORY_YEARS,
                          DEFAULT_PARABOLIC_MAX_RUN_UP_PCT,
                          DEFAULT_PARABOLIC_RECENCY_DAYS,
                          DEFAULT_PARABOLIC_WINDOW_DAYS,
@@ -54,13 +60,17 @@ def compute_leaderboard_rows(prices_by_ticker: dict[str, pd.DataFrame],
                              chained_max_down_streak: int = DEFAULT_CHAINED_MAX_DOWN_STREAK,
                              chained_deep_run_len: int = DEFAULT_CHAINED_DEEP_RUN_LEN,
                              chained_deep_run_count: int = DEFAULT_CHAINED_DEEP_RUN_COUNT,
-                             min_events: int = DEFAULT_MIN_EVENTS) -> list[dict]:
+                             min_events: int = DEFAULT_MIN_EVENTS,
+                             min_history_years: float | None = DEFAULT_MIN_HISTORY_YEARS) -> list[dict]:
     """Per-ticker oscillation summaries, sorted for ranking.
 
     Sort order: steady trend-positive tickers by ``net_legs_per_year`` desc,
-    then thin histories, then dip-chainers, then parabolic trend-positives,
-    then downtrenders; ties break on ticker for determinism. Tickers with
-    zero threshold events are dropped (nothing to show).
+    then thin/short histories (evidence-quality issues — too few completed
+    legs, or too little calendar span for the rate to mean anything; same
+    tier, either flag demotes), then dip-chainers, then parabolic
+    trend-positives, then downtrenders; ties break on ticker for
+    determinism. Tickers with zero threshold events are dropped (nothing to
+    show).
     """
     rows = []
     for ticker in sorted(prices_by_ticker):
@@ -74,7 +84,8 @@ def compute_leaderboard_rows(prices_by_ticker: dict[str, pd.DataFrame],
             chained_max_down_streak=chained_max_down_streak,
             chained_deep_run_len=chained_deep_run_len,
             chained_deep_run_count=chained_deep_run_count,
-            min_events=min_events)
+            min_events=min_events,
+            min_history_years=min_history_years)
         if s["n_events"] == 0:
             continue
         rows.append({
@@ -83,7 +94,8 @@ def compute_leaderboard_rows(prices_by_ticker: dict[str, pd.DataFrame],
             **s,
         })
     rows.sort(key=lambda r: (not r["trend_positive"], r["parabolic"],
-                             r["chained_dips"], r["thin_history"],
+                             r["chained_dips"],
+                             r["thin_history"] or r["short_history"],
                              -r["net_legs_per_year"], r["ticker"]))
     return rows
 
@@ -106,9 +118,11 @@ def build_leaderboard(rows: list[dict],
             "Net resolved dips per year and P(recovery|dip) (dip-transition "
             "reliability — did a dip chain into another dip, or resolve) "
             "are reported alongside as context. Thin histories "
-            "(too few completed legs for the rates to mean anything) are "
-            "flagged and sorted below the proven steady candidates; "
-            "dip-chainers (runs of consecutive -N% legs at/past the caps — "
+            "(too few completed legs) and short histories (too little "
+            "calendar span vs. the lookback window, e.g. a newly-listed "
+            "leveraged ETF) are flagged and sorted below the proven steady "
+            "candidates — the rate has no denominator to stand on either "
+            "way; dip-chainers (runs of consecutive -N% legs at/past the caps — "
             "BUY signals that routinely ride deep underwater) sort next; "
             "parabolic runners (spiked from their trailing 12-month low past "
             "the configured cap within the recency window — legs from a "

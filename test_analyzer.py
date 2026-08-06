@@ -334,6 +334,30 @@ def test_min_events_is_configurable():
 
 
 # ---------------------------------------------------------------------------
+# short-history gate: a rate needs a denominator it actually earned, not just
+# enough legs — a newly-listed leveraged ETF can clear min_events on
+# volatility-inflated chop packed into a few months
+# ---------------------------------------------------------------------------
+
+def test_short_history_off_by_default():
+    s = compute_oscillation_summary(sine_prices(), threshold_pct=10.0)
+    assert s["short_history"] is False           # min_history_years=None -> gate off
+
+
+def test_short_history_flagged_when_span_below_threshold():
+    s = compute_oscillation_summary(sine_prices(), threshold_pct=10.0,
+                                    min_history_years=5.0)
+    assert s["span_years"] == pytest.approx(2.95, abs=0.01)
+    assert s["short_history"] is True            # ~3y of data, needs 5y
+
+
+def test_short_history_not_flagged_when_span_covers_threshold():
+    s = compute_oscillation_summary(sine_prices(), threshold_pct=10.0,
+                                    min_history_years=2.0)
+    assert s["short_history"] is False           # ~3y of data clears 2y
+
+
+# ---------------------------------------------------------------------------
 # chained-dips gate
 # ---------------------------------------------------------------------------
 
@@ -458,6 +482,24 @@ def test_leaderboard_drops_zero_event_tickers():
     assert rows == []
 
 
+def test_leaderboard_short_history_ranks_at_thin_tier():
+    """LMTL/AVGU-shaped: enough legs (13) to clear min_events, but crammed
+    into ~18 days instead of years — the gate leg-count-only thin_history
+    misses, because the ticker never lived through the lookback window."""
+    prices = {
+        "OSC": sine_prices(),                     # ~3y span, clean
+        "YOUNG": _cycle_prices(5, 3, pad_to=14),   # 13 legs, ~18 days
+    }
+    as_of = max(p["date"].iloc[-1] for p in prices.values())
+    rows = compute_leaderboard_rows(prices, {}, as_of, 10.0, 30,
+                                    min_history_years=2.0)
+    by_ticker = {r["ticker"]: r for r in rows}
+    assert by_ticker["YOUNG"]["trend_positive"] is True
+    assert by_ticker["YOUNG"]["thin_history"] is False    # 13 legs clears min_events
+    assert by_ticker["YOUNG"]["short_history"] is True    # but only ~18 days of data
+    assert [r["ticker"] for r in rows] == ["OSC", "YOUNG"]
+
+
 def test_screen_filename_matches_threshold():
     from main import _screen_filename
     assert _screen_filename(5.0) == "bullish_screen_5pct.json"
@@ -482,6 +524,7 @@ def test_leaderboard_payloads_one_per_threshold():
         "chained_deep_run_len": 4,
         "chained_deep_run_count": 2,
         "min_events": 10,
+        "min_history_fraction": 0.9,
     }
     payloads = _leaderboard_payloads(
         prices, {"OSC": "test"}, as_of, [5.0, 10.0], years=5, a=a,
@@ -496,3 +539,34 @@ def test_leaderboard_payloads_one_per_threshold():
     osc_5 = next(r for r in payloads[5.0]["results"] if r["ticker"] == "OSC")
     osc_10 = next(r for r in payloads[10.0]["results"] if r["ticker"] == "OSC")
     assert (osc_5["n_up"] + osc_5["n_down"]) >= (osc_10["n_up"] + osc_10["n_down"])
+
+
+def test_leaderboard_payloads_flags_short_history():
+    """main.py multiplies years * min_history_fraction and threads the
+    product through to the short_history gate."""
+    from main import _leaderboard_payloads
+
+    prices = {
+        "OSC": sine_prices(),                     # ~2.95y span
+        "YOUNG": _cycle_prices(5, 3, pad_to=14),   # ~0.05y span
+    }
+    as_of = max(p["date"].iloc[-1] for p in prices.values())
+    a = {
+        "recent_window_days": 30,
+        "parabolic_window_days": 365,
+        "parabolic_max_run_up_pct": 200.0,
+        "parabolic_recency_days": 730,
+        "chained_max_down_streak": 5,
+        "chained_deep_run_len": 4,
+        "chained_deep_run_count": 2,
+        "min_events": 10,
+        "min_history_fraction": 0.9,
+    }
+    # years=3 -> min_history_years = 2.7: OSC's 2.95y clears it, YOUNG's
+    # 0.05y doesn't.
+    payloads = _leaderboard_payloads(
+        prices, {}, as_of, [10.0], years=3, a=a,
+        universe_size=2, generated_at="2026-08-05T00:00:00")
+    by_ticker = {r["ticker"]: r for r in payloads[10.0]["results"]}
+    assert by_ticker["OSC"]["short_history"] is False
+    assert by_ticker["YOUNG"]["short_history"] is True

@@ -29,11 +29,12 @@
   function renderScatter(el, results) {
     // Candidates only: downtrenders can print many up-legs while bleeding out,
     // parabolic runners print legs from a one-way spike, dip-chainers inflate
-    // their leg count by riding deep BUY chains, and thin histories have no
-    // denominator — all would look attractive here without being repeatable
-    // dip-cyclers.
+    // their leg count by riding deep BUY chains, and thin/short histories
+    // have no denominator (too few legs, or too little calendar span) —
+    // all would look attractive here without being repeatable dip-cyclers.
     const candidates = results.filter((r) =>
-      r.trend_positive && !r.parabolic && !r.chained_dips && !r.thin_history);
+      r.trend_positive && !r.parabolic && !r.chained_dips &&
+      !r.thin_history && !r.short_history);
     const others = candidates.filter((r) => r.ticker !== HIGHLIGHT);
     const zeta = candidates.find((r) => r.ticker === HIGHLIGHT);
 
@@ -130,6 +131,8 @@
         warn = ` <span title="chained dips (worst run: ${r.max_down_streak} consecutive down legs; ${r.deep_down_runs ?? "?"} runs of 4+) — BUY signals routinely ride deep underwater before harvesting; ranked below clean oscillators" style="cursor:help;">⛓️</span>`;
       } else if (r.thin_history) {
         warn = ` <span title="thin history (only ${r.n_events} completed legs) — not enough evidence for the rates to mean anything; ranked below proven oscillators" style="cursor:help;">🌱</span>`;
+      } else if (r.short_history) {
+        warn = ` <span title="short history (only ${fmt(r.span_years, 1)}y of price data) — the rate is computed over a span this ticker never lived through; ranked below proven oscillators" style="cursor:help;">🐣</span>`;
       }
       const chartUrl = `${siteBase()}/chart/?ticker=${encodeURIComponent(t)}`;
       return `<a href="${chartUrl}" target="_blank" rel="noopener" style="font-weight:700;color:var(--accent,#0284c7);">${t}</a>${warn}`;
@@ -188,7 +191,7 @@
         const el = row.getElement();
         if (!d.trend_positive || d.parabolic) {
           el.style.opacity = "0.45";
-        } else if (d.chained_dips || d.thin_history) {
+        } else if (d.chained_dips || d.thin_history || d.short_history) {
           el.style.opacity = "0.65";
         }
         if (d.ticker === HIGHLIGHT) {
@@ -248,14 +251,16 @@
 
   function renderMeta(metaEl, data) {
     const results = data.results || [];
-    const nPos = results.filter((r) => r.trend_positive && !r.parabolic && !r.chained_dips && !r.thin_history).length;
+    const nPos = results.filter((r) => r.trend_positive && !r.parabolic && !r.chained_dips && !r.thin_history && !r.short_history).length;
     const nPara = results.filter((r) => r.trend_positive && r.parabolic).length;
     const nChain = results.filter((r) => r.trend_positive && !r.parabolic && r.chained_dips).length;
     const nThin = results.filter((r) => r.trend_positive && !r.parabolic && !r.chained_dips && r.thin_history).length;
+    const nShort = results.filter((r) => r.trend_positive && !r.parabolic && !r.chained_dips && !r.thin_history && r.short_history).length;
     metaEl.innerHTML =
       `Screened <b>${data.universe_size}</b> tickers @ ±${data.threshold_pct}% ` +
       `over ${data.lookback_years}y — <b>${nPos}</b> steady trend-positive candidates, ` +
       `${nThin} thin histories (🌱, ranked down), ` +
+      `${nShort} short histories (🐣, ranked down), ` +
       `${nChain} dip-chainers (⛓️, ranked down), ` +
       `${nPara} parabolic runners (🚀, ranked down), ` +
       `${results.filter((r) => !r.trend_positive).length} downtrenders (greyed). ` +

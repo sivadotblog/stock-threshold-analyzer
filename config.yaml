@@ -52,6 +52,18 @@ analyzer:
   # from a single year of data; below min_events completed legs the ticker is
   # flagged `thin_history` and sorted below every proven steady name.
   min_events: 10
+  # Short-history gate: a rate also needs a denominator it actually earned.
+  # A newly-listed, highly volatile single-stock leveraged ETF (LMTL, AVGU —
+  # both ~1y old) can print 20+ legs on volatility-inflated chop alone,
+  # clearing min_events easily, and rank in the top 25 on a rate computed
+  # over a span it never lived through. Flagged `short_history` when the
+  # ticker's actual price-history span is under
+  # lookback_years * min_history_fraction, sorted at the same tier as
+  # thin_history. 0.9 leaves slack for weekends/holidays trimming a few days
+  # off an established ticker's fetch window (AAPL's actual 7y fetch spans
+  # 6.99y, not exactly 7.00) while still catching anything under ~6.3y at
+  # lookback_years=7 — LMTL/AVGU/MAGX/AVGG/QQQU all measured 1-2.4y.
+  min_history_fraction: 0.9
   # Ranking key since 2026-07-31: net_legs_per_year = (n_up - n_down) /
   # span_years. A good oscillator needs both a favorable up/down ratio
   # (quality) and a high leg count (frequency) — neither alone is enough.
