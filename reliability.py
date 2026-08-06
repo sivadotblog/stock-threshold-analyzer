@@ -60,6 +60,21 @@ depth repeatedly is a pattern — CRWD went 4-deep twice without ever hitting
 evidence. Same philosophy as parabolic: gates and tiers with one visible
 yes/no judgment each, never a weighted composite score.
 
+The *short_history* flag targets a failure mode ``thin_history`` misses: a
+newly-listed, highly volatile single-stock leveraged ETF (LMTL, AVGU — both
+listed within the last year) can print 20+ legs on nothing but
+leverage-inflated chop and clear ``min_events`` easily, ranking in the top
+tier of the leaderboard on a ``net_legs_per_year`` rate that is a real leg
+count divided by a denominator the ticker never earned — it never lived
+through most of the configured lookback window. Flagged when ``span_years``
+(the ticker's actual price-history span) falls short of ``min_history_years``
+— the caller multiplies ``lookback_years`` by some fraction (leaving slack:
+an established ticker's fetch window rarely spans exactly ``lookback_years``
+once weekends and holidays trim the boundary days) and passes the product in.
+Same evidence-quality family as thin_history — sorted at the same tier — but
+triggered by calendar span instead of leg count, since a ticker can clear one
+gate while failing the other.
+
 Pure functions only (no network) so the math is unit-testable in isolation.
 """
 
@@ -90,6 +105,9 @@ DEFAULT_CHAINED_DEEP_RUN_COUNT = 2
 # history. Below this many completed legs the ticker is flagged thin_history
 # and sorted below every proven steady name.
 DEFAULT_MIN_EVENTS = 10
+# Short-history gate: None means off (the pure-function default). Production
+# always passes a value — main.py computes lookback_years * min_history_fraction.
+DEFAULT_MIN_HISTORY_YEARS = None
 
 # Direction labels for action_side: which side the next threshold event
 # would print (BUY = the next event would be a down leg you could buy;
@@ -177,7 +195,8 @@ def compute_oscillation_summary(prices: pd.DataFrame,
                                 chained_max_down_streak: int = DEFAULT_CHAINED_MAX_DOWN_STREAK,
                                 chained_deep_run_len: int = DEFAULT_CHAINED_DEEP_RUN_LEN,
                                 chained_deep_run_count: int = DEFAULT_CHAINED_DEEP_RUN_COUNT,
-                                min_events: int = DEFAULT_MIN_EVENTS) -> dict:
+                                min_events: int = DEFAULT_MIN_EVENTS,
+                                min_history_years: float | None = DEFAULT_MIN_HISTORY_YEARS) -> dict:
     """One ticker's oscillation summary over the supplied price window.
 
     Parameters
@@ -196,6 +215,10 @@ def compute_oscillation_summary(prices: pd.DataFrame,
     evidence is not perfection), ``up_legs_per_year`` (context: completed
     +N% recoveries per year), ``thin_history`` (fewer than ``min_events``
     completed legs — the rates have no denominator to stand on),
+    ``span_years`` / ``short_history`` (calendar-span gate: flagged when the
+    ticker's actual price history is shorter than ``min_history_years`` — a
+    newly-listed ticker never lived through most of the lookback window it is
+    being rated over, even if it cleared ``min_events`` on volatility alone),
     ``trend_positive`` (drift filter), ``max_run_up_pct`` / ``recent_run_up_pct`` / ``parabolic`` (spike
     gate: largest gain from a trailing ``parabolic_window_days`` low; flagged
     when the recent value — within ``parabolic_recency_days`` of ``as_of`` —
@@ -223,6 +246,7 @@ def compute_oscillation_summary(prices: pd.DataFrame,
         "recovery_rate": None,
         "net_dips_per_year": 0.0,
         "thin_history": True,
+        "short_history": False,
         "span_years": 0.0,
         "net_return_pct": 0.0,
         "cagr_pct": 0.0,
@@ -270,6 +294,8 @@ def compute_oscillation_summary(prices: pd.DataFrame,
     span_days = (prices["date"].iloc[-1] - prices["date"].iloc[0]).days
     span_years = span_days / _DAYS_PER_YEAR
     out["span_years"] = round(span_years, 2)
+    out["short_history"] = bool(
+        min_history_years is not None and span_years < min_history_years)
     if span_years > _EPS:
         out["up_legs_per_year"] = round(n_up / span_years, 2)
         out["net_legs_per_year"] = round((n_up - n_down) / span_years, 2)
