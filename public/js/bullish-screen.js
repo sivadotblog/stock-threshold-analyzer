@@ -151,8 +151,13 @@
       columns: [
         { title: "#", field: "rank", sorter: "number", hozAlign: "right", width: 55 },
         { title: "Ticker", field: "ticker", sorter: "string", width: 105, formatter: tickerFmt },
-        { title: "Name", field: "name", sorter: "string", minWidth: 160,
-          formatter: (cell) => `<span style="color:var(--fg-muted,#4a5568);">${cell.getValue() || "—"}</span>` },
+        { title: "Name", field: "name", sorter: "string", width: 220,
+          formatter: (cell) => {
+            const v = cell.getValue();
+            if (!v) return `<span style="color:var(--fg-muted,#4a5568);">—</span>`;
+            const short = v.length > 30 ? `${v.slice(0, 30)}…` : v;
+            return `<span title="${v}" style="color:var(--fg-muted,#4a5568);">${short}</span>`;
+          } },
         { title: "Price", field: "current_price", sorter: "number", hozAlign: "right", width: 90, formatter: num(2) },
         { title: "Action", field: "action_price", sorter: "number", hozAlign: "left", width: 130, formatter: actionFmt },
         { title: "% Needed", field: "pct_to_action", sorter: "number", hozAlign: "right", width: 100,
@@ -209,9 +214,14 @@
       const filters = [];
       const q = document.getElementById("f-ticker")?.value.trim().toLowerCase();
       if (q) {
-        filters.push((data) =>
-          (data.ticker || "").toLowerCase().includes(q) ||
-          (data.name || "").toLowerCase().includes(q));
+        // Tabulator's array-form setFilter only recognizes custom predicates
+        // wrapped as {field: fn} — a bare function is silently dropped (it
+        // looks for a filter.type in its registry and finds none).
+        filters.push({
+          field: (data) =>
+            (data.ticker || "").toLowerCase().includes(q) ||
+            (data.name || "").toLowerCase().includes(q),
+        });
       }
       const rankMax = document.getElementById("f-rank-max")?.value;
       if (rankMax) filters.push({ field: "rank", type: "<=", value: Number(rankMax) });
